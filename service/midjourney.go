@@ -30,6 +30,13 @@ func CovertMjpActionToModelName(mjAction string) string {
 	return modelName
 }
 
+// MidjourneyQuotaShortfall reports whether the wallet cannot cover the
+// requested Midjourney price. A user-level unlimited-quota user is exempt
+// (issue #4), so legacy Midjourney handlers must not block them on balance.
+func MidjourneyQuotaShortfall(userQuota int, priceQuota int, unlimited bool) bool {
+	return !unlimited && userQuota-priceQuota < 0
+}
+
 // PrepareMidjourneyTaskBilling sets the durable refund marker before the task is inserted.
 func PrepareMidjourneyTaskBilling(relayInfo *relaycommon.RelayInfo, task *model.Midjourney, quota int, shouldBill bool) (bool, error) {
 	if task == nil {
@@ -49,6 +56,12 @@ func PrepareMidjourneyTaskBilling(relayInfo *relaycommon.RelayInfo, task *model.
 	}
 	if relayInfo.BillingSource == BillingSourceSubscription {
 		return false, errors.New("legacy Midjourney billing does not support subscriptions")
+	}
+
+	// 无限额度用户不在任务上保留可退款额度：日志由调用点用 priceData.Quota 记录，
+	// 失败退款自然为 0，同时消除「先落库、后清零」之间的崩溃窗口。
+	if relayInfo.UserUnlimited {
+		return true, nil
 	}
 
 	task.Quota = quota

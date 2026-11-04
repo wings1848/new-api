@@ -260,3 +260,30 @@ func TestUnlimitedQuotaLogMarker(t *testing.T) {
 	_, exists := normal.Snapshot()["unlimited_quota"]
 	assert.False(t, exists)
 }
+
+// TestUnlimitedQuotaMidjourneyPrecheck covers the legacy Midjourney HTTP-layer
+// balance gate: unlimited users must not be blocked when the wallet cannot
+// cover the price (reverify finding F1).
+func TestUnlimitedQuotaMidjourneyPrecheck(t *testing.T) {
+	assert.True(t, MidjourneyQuotaShortfall(0, 100, false), "finite user with an empty wallet must be blocked")
+	assert.False(t, MidjourneyQuotaShortfall(0, 100, true), "unlimited user must not be blocked")
+	assert.False(t, MidjourneyQuotaShortfall(1000, 100, false), "finite user with enough balance passes")
+}
+
+// TestUnlimitedQuotaPrepareSkipsRefundableQuota covers reverify finding F2: an
+// unlimited task must not persist a refundable quota even before settlement.
+func TestUnlimitedQuotaPrepareSkipsRefundableQuota(t *testing.T) {
+	user := newUnlimitedTestUser(t, 0, true)
+	task := &model.Midjourney{
+		UserId:    user.Id,
+		MjId:      fmt.Sprintf("mj-prepare-%d", unlimitedTestUserSeq.Add(1)),
+		Action:    "IMAGINE",
+		ChannelId: 1,
+	}
+	prepared, err := PrepareMidjourneyTaskBilling(unlimitedTestRelayInfo(user, nil), task, 100, true)
+	require.NoError(t, err)
+	assert.True(t, prepared)
+	assert.Zero(t, task.Quota)
+	assert.Zero(t, task.TokenId)
+	assert.Zero(t, task.BillingChannelId)
+}

@@ -220,7 +220,7 @@ func RelaySwapFace(c *gin.Context, info *relaycommon.RelayInfo) *dto.MidjourneyR
 		}
 	}
 
-	if userQuota-priceData.Quota < 0 {
+	if service.MidjourneyQuotaShortfall(userQuota, priceData.Quota, info.UserUnlimited) {
 		return &dto.MidjourneyResponse{
 			Code:        4,
 			Description: "quota_not_enough",
@@ -548,7 +548,7 @@ func RelayMidjourneySubmit(c *gin.Context, relayInfo *relaycommon.RelayInfo) *dt
 		}
 	}
 
-	if consumeQuota && userQuota-priceData.Quota < 0 {
+	if consumeQuota && service.MidjourneyQuotaShortfall(userQuota, priceData.Quota, relayInfo.UserUnlimited) {
 		return &dto.MidjourneyResponse{
 			Code:        4,
 			Description: "quota_not_enough",
