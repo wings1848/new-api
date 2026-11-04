@@ -170,6 +170,8 @@ func PrivacyInbound() gin.HandlerFunc {
 		}
 		_ = storage.Close()
 		common.SetContextKey(c, constant.ContextKeyPrivacyReplacements, replacements)
+		finishRestore := installPrivacyRestoreWriter(c, replacements)
+		defer finishRestore()
 		logger.LogInfo(c, common.LogText("privacy: masked request user=%d path=%s findings=%d placeholders=%d", c.GetInt("id"), c.Request.URL.Path, findings, len(replacements)))
 		c.Next()
 	}
