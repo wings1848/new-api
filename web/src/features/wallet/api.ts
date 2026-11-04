@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { api } from '@/lib/api'
+import type { QuotaWindowOverview } from '@/features/users/types'
 
 import type {
   RedemptionRequest,
@@ -244,5 +245,13 @@ export async function completeOrder(
   request: CompleteOrderRequest
 ): Promise<ApiResponse> {
   const res = await api.post('/api/user/topup/complete', request)
+  return res.data
+}
+
+/** Read the caller's 5h/7d quota windows (used, limit, remaining, reset). */
+export async function getQuotaWindowSelf(): Promise<
+  ApiResponse<QuotaWindowOverview>
+> {
+  const res = await api.get('/api/quota-window/self')
   return res.data
 }

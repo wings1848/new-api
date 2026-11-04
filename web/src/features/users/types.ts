@@ -118,6 +118,27 @@ export interface SearchUsersParams {
   sort_order?: UserSortOrder
 }
 
+export interface QuotaWindowItem {
+  kind: string
+  limit: number
+  used: number
+  remaining: number
+  reset_at: number
+  source: string
+}
+
+export interface QuotaWindowOverview {
+  user_id?: number
+  username?: string
+  group: string
+  windows: QuotaWindowItem[]
+  user_overrides: {
+    window_5h_quota: number
+    window_7d_quota: number
+  }
+  server_time: number
+}
+
 export interface UserFormData {
   username: string
   display_name: string
