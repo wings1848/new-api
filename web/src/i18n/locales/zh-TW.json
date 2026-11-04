@@ -6744,6 +6744,7 @@
     "Unknown setting type: {{type}}": "未知的設定類型：{{type}}",
     "Unknown version": "未知版本",
     "Unlimited": "無限制",
+    "No wallet or token quota is charged; usage is still logged.": "不扣錢包或令牌額度，用量仍會記錄與統計。",
     "Unlimited Quota": "無限配額",
     "Unrecognized status code": "無法識別的狀態碼",
     "Unsaved changes": "未儲存的變更",

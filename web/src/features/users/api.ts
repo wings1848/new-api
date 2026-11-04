@@ -163,6 +163,22 @@ export async function manageUser(
 }
 
 /**
+ * Enable or disable the admin-managed user-level unlimited quota. The backend
+ * treats value 1/0 explicitly (a GORM struct update would skip false).
+ */
+export async function setUserUnlimitedQuota(
+  id: number,
+  enabled: boolean
+): Promise<ApiResponse<Partial<User>>> {
+  const res = await api.post('/api/user/manage', {
+    id,
+    action: 'set_unlimited_quota',
+    value: enabled ? 1 : 0,
+  })
+  return res.data
+}
+
+/**
  * Adjust user quota atomically (add/subtract/override)
  */
 export async function adjustUserQuota(

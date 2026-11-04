@@ -6744,6 +6744,7 @@
     "Unknown setting type: {{type}}": "Loại cài đặt không xác định: {{type}}",
     "Unknown version": "Phiên bản không xác định",
     "Unlimited": "Không giới hạn",
+    "No wallet or token quota is charged; usage is still logged.": "Không trừ hạn mức ví hoặc token; mức sử dụng vẫn được ghi lại.",
     "Unlimited Quota": "Hạn mức không giới hạn",
     "Unrecognized status code": "Mã trạng thái không xác định",
     "Unsaved changes": "Thay đổi chưa được lưu",

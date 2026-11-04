@@ -6744,6 +6744,7 @@
     "Unknown setting type: {{type}}": "不明な設定タイプです：{{type}}",
     "Unknown version": "不明なバージョン",
     "Unlimited": "無制限",
+    "No wallet or token quota is charged; usage is still logged.": "ウォレットやトークンのクォータは消費されません。使用量は引き続き記録されます。",
     "Unlimited Quota": "無制限のクォータ",
     "Unrecognized status code": "認識できないステータスコード",
     "Unsaved changes": "未保存の変更",

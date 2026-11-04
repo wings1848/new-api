@@ -106,6 +106,27 @@ export function useUsersColumns(): ColumnDef<User>[] {
                 <LongText className='max-w-[140px] text-sm font-normal'>
                   {username}
                 </LongText>
+                {row.original.unlimited_quota && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <StatusBadge
+                          label={t('Unlimited')}
+                          variant='info'
+                          copyable={false}
+                          className='font-normal'
+                        />
+                      }
+                    />
+                    <TooltipContent>
+                      <p className='text-xs'>
+                        {t(
+                          'No wallet or token quota is charged; usage is still logged.'
+                        )}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
                 {remark && (
                   <Tooltip>
                     <TooltipTrigger
