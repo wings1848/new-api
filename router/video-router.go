@@ -11,7 +11,7 @@ func SetVideoRouter(router *gin.Engine) {
 	videoSharedRouter := router.Group("/v1")
 	videoSharedRouter.Use(middleware.RouteTag("relay"))
 	videoSharedRouter.Use(middleware.TokenAuth())
-	videoSharedRouter.Use(middleware.QuotaWindowCheck())
+	videoSharedRouter.Use(middleware.QuotaWindowCheck(), middleware.PrivacyInbound())
 	videoSharedRouter.Use(middleware.SystemPerformanceCheck())
 	videoSharedRouter.POST(
 		"/video/generations",
@@ -26,7 +26,7 @@ func SetVideoRouter(router *gin.Engine) {
 
 	videoV1Router := router.Group("/v1")
 	videoV1Router.Use(middleware.RouteTag("relay"))
-	videoV1Router.Use(middleware.TokenAuth(), middleware.QuotaWindowCheck(), middleware.Distribute())
+	videoV1Router.Use(middleware.TokenAuth(), middleware.QuotaWindowCheck(), middleware.PrivacyInbound(), middleware.Distribute())
 	{
 		videoV1Router.GET("/video/generations/:task_id", controller.RelayTaskFetch)
 		videoV1Router.POST("/videos/:video_id/remix", controller.RelayTask)
