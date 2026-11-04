@@ -111,6 +111,18 @@ func isPrivacyTextKey(key string) bool {
 // PRIVACY_INBOUND_MODE (off/warn/redact/block).
 func PrivacyInbound() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// The relay entry also holds the abuse-guard concurrency slot and books
+		// the request outcome for anomaly detection (issue #32). Keeping the
+		// guard here avoids adding another handler to the relay chains.
+		guardConfig := getAbuseGuardConfig()
+		releaseAbuseSlot, abuseAllowed := acquireAbuseGuardSlot(c)
+		if !abuseAllowed {
+			return
+		}
+		defer func() {
+			recordAbuseOutcome(c, guardConfig, c.Writer.Status())
+			releaseAbuseSlot()
+		}()
 		config := getPrivacyInboundConfig()
 		if config == nil || config.mode == privacyModeOff || config.engine == nil {
 			c.Next()
