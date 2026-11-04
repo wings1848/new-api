@@ -56,6 +56,15 @@
 
 ---
 
+> **wings-api fork**：本仓库是 **wings-api**，基于 [QuantumNous/new-api](https://github.com/QuantumNous/new-api)（AGPL-3.0）的私有 fork，用于自建 AI 网关。按 AGPL-3.0 要求，网络服务使用者可获得本 fork 的修改后源码；上游署名与链接保留。上游项目：<https://github.com/QuantumNous/new-api>。同步上游：
+>
+> ```bash
+> git fetch upstream
+> git merge upstream/main
+> ```
+>
+> 镜像：`ghcr.io/wings1848/wings-api`。本 fork 的 issue 只提到本仓库，不要提到上游。
+
 ## 📝 项目说明
 
 New API 是面向应用、Agent 和团队的自托管 AI 网关。将不同厂商的模型服务接入统一入口，在同一套控制台中管理渠道、访问权限、用量与成本。

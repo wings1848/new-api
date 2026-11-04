@@ -56,6 +56,15 @@
 
 ---
 
+> **wings-api fork**: This repository is **wings-api**, a private fork of [QuantumNous/new-api](https://github.com/QuantumNous/new-api) (AGPL-3.0), used to run a self-hosted AI gateway. As AGPL-3.0 requires, users of the network service can obtain the modified source of this fork; the upstream project's attribution and links are kept. Upstream project: <https://github.com/QuantumNous/new-api>. Sync upstream with:
+>
+> ```bash
+> git fetch upstream
+> git merge upstream/main
+> ```
+>
+> Images: `ghcr.io/wings1848/wings-api`. Issues about this fork belong here, not upstream.
+
 ## 📝 Project Description
 
 New API is a self-hosted AI gateway for applications, agents, and teams. Connect upstream model services, expose a consistent API to your clients, and manage routing, access, usage, and costs in one place.
