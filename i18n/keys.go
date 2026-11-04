@@ -20,6 +20,7 @@ const (
 	MsgAuthChannelSelectForbidden = "auth.channel_select_forbidden"
 
 	MsgRateLimitReached      = "rate_limit.reached"
+	MsgQuotaWindowExceeded   = "quota_window.exceeded"
 	MsgRateLimitTotalReached = "rate_limit.total_reached"
 
 	MsgDistributorInvalidRequest               = "distributor.invalid_request"
