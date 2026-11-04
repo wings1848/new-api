@@ -87,7 +87,9 @@ import {
   getUser,
   getGroups,
   getPermissionCatalog,
+  getQuotaWindowUser,
   setUserUnlimitedQuota,
+  updateQuotaWindowUser,
 } from '../api'
 import { BINDING_FIELDS, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../constants'
 import {
@@ -97,7 +99,14 @@ import {
   transformFormDataToPayload,
   transformUserToFormDefaults,
 } from '../lib'
-import type { User } from '../types'
+import {
+  buildQuotaWindowUpdatePayload,
+  quotaWindowFormStateFromOverview,
+  quotaWindowLimitsChanged,
+  type QuotaWindowLimitState,
+} from '../lib/quota-window'
+import type { QuotaWindowOverview, User } from '../types'
+import { QuotaWindowLimitField } from './quota-window-limit-field'
 import { UserQuotaDialog } from './user-quota-dialog'
 import { useUsers } from './users-provider'
 
@@ -122,6 +131,9 @@ export function UsersMutateDrawer({
   // routine edits of an administrator do not require step-up verification.
   const loadedPermissions = useRef<AdminPermissionMatrix | undefined>(undefined)
   const loadedUnlimitedQuota = useRef(false)
+  const loadedQuotaWindowOverview = useRef<QuotaWindowOverview | null>(null)
+  const [quotaWindowState, setQuotaWindowState] =
+    useState<QuotaWindowLimitState | null>(null)
 
   // Fetch groups
   const { data: groupsData } = useQuery({
@@ -147,9 +159,14 @@ export function UsersMutateDrawer({
   // Load existing data when updating
   useEffect(() => {
     if (open && isUpdate && currentRow) {
-      // For update, fetch fresh data
-      getUser(currentRow.id)
-        .then((result) => {
+      let cancelled = false
+      const load = async () => {
+        try {
+          const [result, windowResult] = await Promise.all([
+            getUser(currentRow.id),
+            getQuotaWindowUser(currentRow.id),
+          ])
+          if (cancelled) return
           if (result.success && result.data) {
             loadedPermissions.current = result.data.admin_permissions
             loadedUnlimitedQuota.current = result.data.unlimited_quota ?? false
@@ -157,11 +174,27 @@ export function UsersMutateDrawer({
           } else {
             handleServerError(result, t('Failed to load'))
           }
-        })
-        .catch((error) => handleServerError(error, t('Failed to load')))
+          if (windowResult.success && windowResult.data) {
+            loadedQuotaWindowOverview.current = windowResult.data
+            setQuotaWindowState(
+              quotaWindowFormStateFromOverview(windowResult.data)
+            )
+          }
+        } catch (error) {
+          if (!cancelled) {
+            handleServerError(error, t('Failed to load'))
+          }
+        }
+      }
+      void load()
+      return () => {
+        cancelled = true
+      }
     } else if (open && !isUpdate) {
       // For create, reset to defaults
       loadedUnlimitedQuota.current = false
+      loadedQuotaWindowOverview.current = null
+      setQuotaWindowState(null)
       form.reset(USER_FORM_DEFAULT_VALUES)
     }
   }, [open, isUpdate, currentRow, form, t])
@@ -257,6 +290,30 @@ export function UsersMutateDrawer({
             loadedUnlimitedQuota.current = nextUnlimited
           }
         }
+        if (
+          isUpdate &&
+          currentRow &&
+          quotaWindowState &&
+          quotaWindowLimitsChanged(
+            quotaWindowState,
+            loadedQuotaWindowOverview.current
+          )
+        ) {
+          const windowResult = await updateQuotaWindowUser(
+            currentRow.id,
+            buildQuotaWindowUpdatePayload(quotaWindowState)
+          )
+          if (!windowResult.success) {
+            handleServerError(windowResult, t('Failed to save'))
+            return
+          }
+          if (windowResult.data) {
+            loadedQuotaWindowOverview.current = windowResult.data
+            setQuotaWindowState(
+              quotaWindowFormStateFromOverview(windowResult.data)
+            )
+          }
+        }
         toast.success(
           isUpdate
             ? t(SUCCESS_MESSAGES.USER_UPDATED)
@@ -285,6 +342,11 @@ export function UsersMutateDrawer({
         loadedPermissions.current = result.data.admin_permissions
         loadedUnlimitedQuota.current = result.data.unlimited_quota ?? false
         form.reset(transformUserToFormDefaults(result.data))
+      }
+      const windowResult = await getQuotaWindowUser(currentRow.id)
+      if (windowResult.success && windowResult.data) {
+        loadedQuotaWindowOverview.current = windowResult.data
+        setQuotaWindowState(quotaWindowFormStateFromOverview(windowResult.data))
       }
       triggerRefresh()
     } catch (error) {
@@ -539,6 +601,56 @@ export function UsersMutateDrawer({
                       </FormItem>
                     )}
                   />
+                  {quotaWindowState && (
+                    <div className='space-y-3 rounded-lg border p-3'>
+                      <div className='space-y-1'>
+                        <h4 className='text-sm font-medium'>
+                          {t('Quota Windows')}
+                        </h4>
+                        <p className='text-muted-foreground text-xs'>
+                          {t(
+                            '5h and 7d quota windows; inheriting the group default follows the group setting.'
+                          )}
+                        </p>
+                      </div>
+                      <QuotaWindowLimitField
+                        amount={quotaWindowState.fiveHourAmount}
+                        currencyLabel={currencyLabel}
+                        label={t('5-hour quota limit')}
+                        mode={quotaWindowState.fiveHourMode}
+                        onAmountChange={(amount) =>
+                          setQuotaWindowState({
+                            ...quotaWindowState,
+                            fiveHourAmount: amount,
+                          })
+                        }
+                        onModeChange={(mode) =>
+                          setQuotaWindowState({
+                            ...quotaWindowState,
+                            fiveHourMode: mode,
+                          })
+                        }
+                      />
+                      <QuotaWindowLimitField
+                        amount={quotaWindowState.sevenDayAmount}
+                        currencyLabel={currencyLabel}
+                        label={t('7-day quota limit')}
+                        mode={quotaWindowState.sevenDayMode}
+                        onAmountChange={(amount) =>
+                          setQuotaWindowState({
+                            ...quotaWindowState,
+                            sevenDayAmount: amount,
+                          })
+                        }
+                        onModeChange={(mode) =>
+                          setQuotaWindowState({
+                            ...quotaWindowState,
+                            sevenDayMode: mode,
+                          })
+                        }
+                      />
+                    </div>
+                  )}
                 </SideDrawerSection>
               )}
 

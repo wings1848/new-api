@@ -31,8 +31,10 @@ import type {
   UserFormData,
   ManageUserAction,
   ManageUserQuotaPayload,
+  QuotaWindowOverview,
   ApiResponse,
 } from './types'
+import type { QuotaWindowUpdatePayload } from './lib/quota-window'
 
 // A step-up proof is single-use, so the request carrying it must never be
 // replayed by the auth-refresh interceptor; it refreshes first instead.
@@ -236,6 +238,27 @@ export async function getPermissionCatalog(): Promise<PermissionCatalog> {
     resources: res.data?.data?.resources ?? [],
     roles: res.data?.data?.roles ?? [],
   }
+}
+
+// ============================================================================
+// Quota Window (5h / 7d) APIs
+// ============================================================================
+
+/** Read one user's configured/effective 5h and 7d quota windows (admin). */
+export async function getQuotaWindowUser(
+  userId: number
+): Promise<ApiResponse<QuotaWindowOverview>> {
+  const res = await api.get(`/api/quota-window/admin/users/${userId}`)
+  return res.data
+}
+
+/** Set or clear one user's 5h/7d window limits (admin). */
+export async function updateQuotaWindowUser(
+  userId: number,
+  payload: QuotaWindowUpdatePayload
+): Promise<ApiResponse<QuotaWindowOverview>> {
+  const res = await api.put(`/api/quota-window/admin/users/${userId}`, payload)
+  return res.data
 }
 
 // ============================================================================
