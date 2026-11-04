@@ -149,7 +149,7 @@ func productionPluginRouteHandlers(generation *jsplugin.RoutingGeneration, group
 		pinRoute,
 		middleware.NativeRouteCredential(keys...),
 		middleware.TokenAuth(),
-		middleware.QuotaWindowCheck(),
+		middleware.QuotaWindowCheck(), middleware.PrivacyInbound(),
 		middleware.SystemPerformanceCheck(),
 		middleware.ModelRequestRateLimit(),
 		middleware.PrepareTaskPluginRoute(),

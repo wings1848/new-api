@@ -84,6 +84,7 @@ const (
 
 	// quota error
 	ErrorCodeQuotaWindowExceeded        ErrorCode = "quota_window_exceeded"
+	ErrorCodeSensitiveDataBlocked       ErrorCode = "sensitive_data_blocked"
 	ErrorCodeInsufficientUserQuota      ErrorCode = "insufficient_user_quota"
 	ErrorCodePreConsumeTokenQuotaFailed ErrorCode = "pre_consume_token_quota_failed"
 )

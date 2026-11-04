@@ -62,6 +62,11 @@ const (
 	ContextKeyUsingGroup         ContextKey = "group"
 	ContextKeyUserName           ContextKey = "username"
 
+	// ContextKeyPrivacyReplacements holds the placeholder -> original value map
+	// produced by the inbound privacy filter, so the response writer can restore
+	// the real values before they reach the client (issue #10/#11).
+	ContextKeyPrivacyReplacements ContextKey = "privacy_replacements"
+
 	ContextKeyLocalCountTokens ContextKey = "local_count_tokens"
 
 	ContextKeySystemPromptOverride ContextKey = "system_prompt_override"
