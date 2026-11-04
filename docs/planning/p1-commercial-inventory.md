@@ -48,6 +48,43 @@ AstrLink 的隐私能力是「Apache-2.0 自有源码 + AGPL RelayKit 组合体�
 
 > 许可注意：若未来要双许可/闭源分发，只能搬 AstrLink 自有源码（Apache-2.0），保留 NOTICE/修改说明，不得使用其商标。
 
+## 2.3 落实结论（issue #34）
+
+逐项去留已定（不引入新依赖、不复制代码，仅借鉴设计）。
+
+| 来源 | 项 | 结论 | 去向 / 理由 |
+|---|---|---|---|
+| magpie | `limit.go` 固定窗口算法 | 已完成 | #5 已实现（含 UTC+8 锚点、7d 周一） |
+| magpie | `key_limit.go` 429 语义 | 已完成 | #6 已实现（`Retry-After`/`X-Should-Retry:false`/选渠道前拦截） |
+| magpie | `budget.go` 记账 / 最晚重置 | 已完成 | #5/#6/#8 |
+| magpie | `budget.go` reservation 预估 | **不做** | 当前「最多多放一个请求」（#6 已知项）可接受；出现刷额度再评估，不阻塞 P1 |
+| magpie | `routing.go` 休息阶梯 | 待做 | 并入 **#33**（渠道额度耗尽换号） |
+| magpie | `fallback.go` 只在响应未提交时切换 | 待做 | 并入 **#33** |
+| magpie | `rest_store.go` 多副本休息状态 | 待做 | 并入 **#33**（用 DB/Redis，不用单机 JSONL） |
+| magpie | pace 排序 / Codex 登录态轮询 | 不做 | 桌面 CLI 场景特有，与网关无关 |
+| magpie | GUI / JSONL 账本 / 厂商差异化读数 / `X-Magpie-*` | 不移植 | 平台/产品绑定 |
+| AstrLink | `regex.go` 规则与校验（Luhn 等） | 已完成 | #9 独立实现 8 类规则 + Luhn/身份证校验位 |
+| AstrLink | `engine.go`/`types.go` 三档策略 | 已完成 | #9（warn/block/redact） |
+| AstrLink | `document.go` 协议根字段提取 | 待做（P2） | 并入 **#36**（当前 key 白名单可用，精确化是增强） |
+| AstrLink | `continuation.go` 续传字段排除 | 待做（P2） | 并入 **#36**（当前白名单天然跳过，扩大扫描范围前必须做） |
+| AstrLink | 抑制规则（版本号/日期/URL） | 待做（P2） | 并入 **#36** |
+| AstrLink | fail-closed（503） | 待做（P2） | 并入 **#36**（默认保持 fail-open + 告警） |
+| AstrLink | SSE 还原细节 | 已完成 + 已复核 | #11 已实现；复核结论见下 |
+| AstrLink | JSON worker 本地模型 | 不做 | 多二进制 + 37MiB 模型 + C 依赖，收益不成比例（P2 再议） |
+| AstrLink | `relaykitbridge`（AGPL 组合体） | 不抄 | 无许可收益 |
+
+### 复核结论（#11 相关，AstrLink 报告里的 3 个坑）
+
+1. **响应压缩顺序**：new-api 的 `middleware/gzip.go` 只做**请求体解压**，relay 响应链没有响应压缩中间件；还原 writer 在 gin 写出前安装，不存在「先压缩后还原」问题。若未来加响应压缩，必须保证压缩在还原之后（外层）。
+2. **幂等性**：占位符是 HMAC 确定性的、每次还原把占位符替换回原值；重复执行还原不会再命中占位符，天然幂等，不需要额外 `buffered.Replace`。
+3. **`Accept-Encoding`**：网关不解压/重压上游响应，无需禁用；该坑只影响 AstrLink 自己的还原层。
+
+### 许可与依赖
+
+- 本仓库隐私实现为**独立实现**（#9~#13），未复制 AstrLink/magpie 代码，无需在文件头标注修改来源。
+- 若未来直接搬运 AstrLink 自有源码四块，需附 Apache-2.0 全文、保留 NOTICE、标注修改，且不得使用其商标；`relaykitbridge` 永不搬。
+- 两条主线均**未新增 Go 依赖**（`pkg/privacy` 纯 stdlib；窗口/审计用现有 GORM/Redis）。
+
 ## 3. 小规模开放测试前必须补的 3 件事
 
 1. **注册收口**（已有开关，需确认默认与邀请码流程）
