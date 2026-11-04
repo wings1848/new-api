@@ -43,6 +43,7 @@ import { Route as AuthenticatedKeysIndexRouteImport } from './routes/_authentica
 import { Route as AuthenticatedModelsIndexRouteImport } from './routes/_authenticated/models/index'
 import { Route as AuthenticatedModelsSectionRouteImport } from './routes/_authenticated/models/$section'
 import { Route as AuthenticatedPlaygroundIndexRouteImport } from './routes/_authenticated/playground/index'
+import { Route as AuthenticatedPrivacyAuditIndexRouteImport } from './routes/_authenticated/privacy-audit/index'
 import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
 import { Route as AuthenticatedRedemptionCodesIndexRouteImport } from './routes/_authenticated/redemption-codes/index'
 import { Route as AuthenticatedSecurityIndexRouteImport } from './routes/_authenticated/security/index'
@@ -247,6 +248,12 @@ const AuthenticatedPlaygroundIndexRoute =
   AuthenticatedPlaygroundIndexRouteImport.update({
     id: '/playground/',
     path: '/playground/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPrivacyAuditIndexRoute =
+  AuthenticatedPrivacyAuditIndexRouteImport.update({
+    id: '/privacy-audit/',
+    path: '/privacy-audit/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedProfileIndexRoute =
@@ -457,6 +464,7 @@ export interface FileRoutesByFullPath {
   '/keys/': typeof AuthenticatedKeysIndexRoute
   '/models/': typeof AuthenticatedModelsIndexRoute
   '/playground/': typeof AuthenticatedPlaygroundIndexRoute
+  '/privacy-audit/': typeof AuthenticatedPrivacyAuditIndexRoute
   '/profile/': typeof AuthenticatedProfileIndexRoute
   '/redemption-codes/': typeof AuthenticatedRedemptionCodesIndexRoute
   '/security/': typeof AuthenticatedSecurityIndexRoute
@@ -519,6 +527,7 @@ export interface FileRoutesByTo {
   '/keys': typeof AuthenticatedKeysIndexRoute
   '/models': typeof AuthenticatedModelsIndexRoute
   '/playground': typeof AuthenticatedPlaygroundIndexRoute
+  '/privacy-audit': typeof AuthenticatedPrivacyAuditIndexRoute
   '/profile': typeof AuthenticatedProfileIndexRoute
   '/redemption-codes': typeof AuthenticatedRedemptionCodesIndexRoute
   '/security': typeof AuthenticatedSecurityIndexRoute
@@ -585,6 +594,7 @@ export interface FileRoutesById {
   '/_authenticated/keys/': typeof AuthenticatedKeysIndexRoute
   '/_authenticated/models/': typeof AuthenticatedModelsIndexRoute
   '/_authenticated/playground/': typeof AuthenticatedPlaygroundIndexRoute
+  '/_authenticated/privacy-audit/': typeof AuthenticatedPrivacyAuditIndexRoute
   '/_authenticated/profile/': typeof AuthenticatedProfileIndexRoute
   '/_authenticated/redemption-codes/': typeof AuthenticatedRedemptionCodesIndexRoute
   '/_authenticated/security/': typeof AuthenticatedSecurityIndexRoute
@@ -650,6 +660,7 @@ export interface FileRouteTypes {
     | '/keys/'
     | '/models/'
     | '/playground/'
+    | '/privacy-audit/'
     | '/profile/'
     | '/redemption-codes/'
     | '/security/'
@@ -712,6 +723,7 @@ export interface FileRouteTypes {
     | '/keys'
     | '/models'
     | '/playground'
+    | '/privacy-audit'
     | '/profile'
     | '/redemption-codes'
     | '/security'
@@ -777,6 +789,7 @@ export interface FileRouteTypes {
     | '/_authenticated/keys/'
     | '/_authenticated/models/'
     | '/_authenticated/playground/'
+    | '/_authenticated/privacy-audit/'
     | '/_authenticated/profile/'
     | '/_authenticated/redemption-codes/'
     | '/_authenticated/security/'
@@ -1063,6 +1076,13 @@ declare module '@tanstack/react-router' {
       path: '/playground'
       fullPath: '/playground/'
       preLoaderRoute: typeof AuthenticatedPlaygroundIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/privacy-audit/': {
+      id: '/_authenticated/privacy-audit/'
+      path: '/privacy-audit'
+      fullPath: '/privacy-audit/'
+      preLoaderRoute: typeof AuthenticatedPrivacyAuditIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/profile/': {
@@ -1374,6 +1394,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedKeysIndexRoute: typeof AuthenticatedKeysIndexRoute
   AuthenticatedModelsIndexRoute: typeof AuthenticatedModelsIndexRoute
   AuthenticatedPlaygroundIndexRoute: typeof AuthenticatedPlaygroundIndexRoute
+  AuthenticatedPrivacyAuditIndexRoute: typeof AuthenticatedPrivacyAuditIndexRoute
   AuthenticatedProfileIndexRoute: typeof AuthenticatedProfileIndexRoute
   AuthenticatedRedemptionCodesIndexRoute: typeof AuthenticatedRedemptionCodesIndexRoute
   AuthenticatedSecurityIndexRoute: typeof AuthenticatedSecurityIndexRoute
@@ -1400,6 +1421,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedKeysIndexRoute: AuthenticatedKeysIndexRoute,
   AuthenticatedModelsIndexRoute: AuthenticatedModelsIndexRoute,
   AuthenticatedPlaygroundIndexRoute: AuthenticatedPlaygroundIndexRoute,
+  AuthenticatedPrivacyAuditIndexRoute: AuthenticatedPrivacyAuditIndexRoute,
   AuthenticatedProfileIndexRoute: AuthenticatedProfileIndexRoute,
   AuthenticatedRedemptionCodesIndexRoute:
     AuthenticatedRedemptionCodesIndexRoute,
