@@ -159,11 +159,12 @@ func GetQuotaWindowUsage(userId int, kind string, windowStart int64) int64 {
 	if DB == nil {
 		return 0
 	}
-	var usage QuotaWindowUsage
-	if err := DB.Where("user_id = ? AND window_kind = ? AND window_start = ?", userId, kind, windowStart).First(&usage).Error; err != nil {
+	var usages []QuotaWindowUsage
+	if err := DB.Where("user_id = ? AND window_kind = ? AND window_start = ?", userId, kind, windowStart).
+		Limit(1).Find(&usages).Error; err != nil || len(usages) == 0 {
 		return 0
 	}
-	return usage.UsedQuota
+	return usages[0].UsedQuota
 }
 
 // SetQuotaWindowLimit upserts one limit row. scopeKey is ignored for global.
@@ -219,9 +220,14 @@ func DeleteQuotaWindowLimit(scopeType string, scopeKey string, kind string) erro
 	return nil
 }
 
+type quotaWindowLimitResolution struct {
+	limit  int64
+	source string
+}
+
 type quotaWindowLimitCacheEntry struct {
-	limit     int64
-	expiresAt time.Time
+	resolution quotaWindowLimitResolution
+	expiresAt  time.Time
 }
 
 var quotaWindowLimitCache sync.Map
@@ -235,11 +241,40 @@ func InvalidateQuotaWindowLimitCache() {
 	})
 }
 
-func resolveQuotaWindowLimitFromDB(userId int, group string, kind string) int64 {
-	if DB == nil {
-		return 0
+// GetQuotaWindowLimitOverride returns the raw limit configured for one scope,
+// and whether that scope has an explicit row (0 is explicit "no limit").
+func GetQuotaWindowLimitOverride(scopeType string, scopeKey string, kind string) (int64, bool) {
+	if DB == nil || !isQuotaWindowKind(kind) {
+		return 0, false
 	}
-	scopes := []struct {
+	var limits []QuotaWindowLimit
+	if err := DB.Where("scope_type = ? AND scope_key = ? AND window_kind = ?", scopeType, scopeKey, kind).
+		Limit(1).Find(&limits).Error; err != nil || len(limits) == 0 {
+		return 0, false
+	}
+	return limits[0].LimitQuota, true
+}
+
+func resolveQuotaWindowLimit(scopes []struct {
+	scopeType string
+	scopeKey  string
+}, kind string) quotaWindowLimitResolution {
+	for _, scope := range scopes {
+		if scope.scopeType == QuotaWindowScopeGroup && scope.scopeKey == "" {
+			continue
+		}
+		if limit, ok := GetQuotaWindowLimitOverride(scope.scopeType, scope.scopeKey, kind); ok {
+			return quotaWindowLimitResolution{limit: limit, source: scope.scopeType}
+		}
+	}
+	return quotaWindowLimitResolution{source: "none"}
+}
+
+func userQuotaWindowScopes(userId int, group string) []struct {
+	scopeType string
+	scopeKey  string
+} {
+	return []struct {
 		scopeType string
 		scopeKey  string
 	}{
@@ -247,37 +282,45 @@ func resolveQuotaWindowLimitFromDB(userId int, group string, kind string) int64 
 		{QuotaWindowScopeGroup, group},
 		{QuotaWindowScopeGlobal, ""},
 	}
-	for _, scope := range scopes {
-		if scope.scopeType == QuotaWindowScopeGroup && scope.scopeKey == "" {
-			continue
-		}
-		var limits []QuotaWindowLimit
-		if err := DB.Where("scope_type = ? AND scope_key = ? AND window_kind = ?", scope.scopeType, scope.scopeKey, kind).
-			Limit(1).Find(&limits).Error; err != nil || len(limits) == 0 {
-			continue
-		}
-		limit := limits[0]
-		if limit.LimitQuota > 0 {
-			return limit.LimitQuota
-		}
-		return 0
+}
+
+// ResolveQuotaWindowLimit resolves the effective limit and its source
+// (user/group/global/none). 0 with source user/group/global means explicit
+// "no limit" at that scope; source "none" means no limit was configured.
+func ResolveQuotaWindowLimit(userId int, group string, kind string) (int64, string) {
+	if userId <= 0 || !isQuotaWindowKind(kind) {
+		return 0, "none"
 	}
-	return 0
+	cacheKey := fmt.Sprintf("%d|%s|%s", userId, group, kind)
+	if cached, ok := quotaWindowLimitCache.Load(cacheKey); ok {
+		if entry, ok := cached.(quotaWindowLimitCacheEntry); ok && time.Now().Before(entry.expiresAt) {
+			return entry.resolution.limit, entry.resolution.source
+		}
+	}
+	resolution := resolveQuotaWindowLimit(userQuotaWindowScopes(userId, group), kind)
+	quotaWindowLimitCache.Store(cacheKey, quotaWindowLimitCacheEntry{resolution: resolution, expiresAt: time.Now().Add(quotaWindowLimitCacheTTL)})
+	return resolution.limit, resolution.source
+}
+
+// ResolveQuotaWindowGroupLimit resolves a group's effective window limit
+// (group override first, then the global default) for the admin group editor.
+func ResolveQuotaWindowGroupLimit(group string, kind string) (int64, string) {
+	if !isQuotaWindowKind(kind) {
+		return 0, "none"
+	}
+	resolution := resolveQuotaWindowLimit([]struct {
+		scopeType string
+		scopeKey  string
+	}{
+		{QuotaWindowScopeGroup, group},
+		{QuotaWindowScopeGlobal, ""},
+	}, kind)
+	return resolution.limit, resolution.source
 }
 
 // GetQuotaWindowLimit resolves the effective limit for a user's window:
 // per-user first, then the group, then the global default. 0 means no limit.
 func GetQuotaWindowLimit(userId int, group string, kind string) int64 {
-	if userId <= 0 || !isQuotaWindowKind(kind) {
-		return 0
-	}
-	cacheKey := fmt.Sprintf("%d|%s|%s", userId, group, kind)
-	if cached, ok := quotaWindowLimitCache.Load(cacheKey); ok {
-		if entry, ok := cached.(quotaWindowLimitCacheEntry); ok && time.Now().Before(entry.expiresAt) {
-			return entry.limit
-		}
-	}
-	limit := resolveQuotaWindowLimitFromDB(userId, group, kind)
-	quotaWindowLimitCache.Store(cacheKey, quotaWindowLimitCacheEntry{limit: limit, expiresAt: time.Now().Add(quotaWindowLimitCacheTTL)})
+	limit, _ := ResolveQuotaWindowLimit(userId, group, kind)
 	return limit
 }

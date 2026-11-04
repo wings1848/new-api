@@ -173,6 +173,21 @@ func SetApiRouter(router *gin.Engine) {
 			}
 		}
 
+		// 5h/7d quota windows (issue #7)
+		quotaWindowRoute := apiRouter.Group("/quota-window")
+		quotaWindowRoute.Use(middleware.UserAuth())
+		{
+			quotaWindowRoute.GET("/self", controller.GetQuotaWindowSelf)
+		}
+		quotaWindowAdminRoute := apiRouter.Group("/quota-window/admin")
+		quotaWindowAdminRoute.Use(middleware.AdminAuth())
+		{
+			quotaWindowAdminRoute.GET("/users/:id", controller.GetQuotaWindowAdminUser)
+			quotaWindowAdminRoute.PUT("/users/:id", controller.UpdateQuotaWindowAdminUser)
+			quotaWindowAdminRoute.GET("/groups/:name", controller.GetQuotaWindowAdminGroup)
+			quotaWindowAdminRoute.PUT("/groups/:name", controller.UpdateQuotaWindowAdminGroup)
+		}
+
 		// Subscription billing (plans, purchase, admin management)
 		subscriptionRoute := apiRouter.Group("/subscription")
 		subscriptionRoute.Use(middleware.UserAuth())
