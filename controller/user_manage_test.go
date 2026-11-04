@@ -724,3 +724,27 @@ func TestUpdateUserSettingKeepsWhatTheRequestLeavesOut(t *testing.T) {
 		})
 	}
 }
+
+func TestManageUserSetUnlimitedQuota(t *testing.T) {
+	db := setupManageUserTestDB(t)
+	user := model.User{
+		Username: "managed-unlimited-user", Password: "password", Role: common.RoleCommonUser,
+		Status: common.UserStatusEnabled, Group: "default", AuthVersion: 1,
+	}
+	require.NoError(t, db.Create(&user).Error)
+
+	recorder := performManageUserRequest(t, fmt.Sprintf(`{"id":%d,"action":"set_unlimited_quota","value":1}`, user.Id))
+	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.Contains(t, recorder.Body.String(), `"success":true`)
+
+	var enabled bool
+	require.NoError(t, db.Raw("SELECT unlimited_quota FROM users WHERE id = ?", user.Id).Scan(&enabled).Error)
+	assert.True(t, enabled, "unlimited_quota must be enabled")
+
+	recorder = performManageUserRequest(t, fmt.Sprintf(`{"id":%d,"action":"set_unlimited_quota","value":0}`, user.Id))
+	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.Contains(t, recorder.Body.String(), `"success":true`)
+
+	require.NoError(t, db.Raw("SELECT unlimited_quota FROM users WHERE id = ?", user.Id).Scan(&enabled).Error)
+	assert.False(t, enabled, "unlimited_quota must be disabled again (GORM zero value must not be skipped)")
+}

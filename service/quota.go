@@ -138,12 +138,14 @@ func PreWssConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usag
 	quota, clamp := calculateAudioQuota(quotaInfo)
 	noteQuotaClamp(relayInfo, clamp)
 
-	if userQuota < quota {
-		return fmt.Errorf("user quota is not enough, user quota: %s, need quota: %s", logger.FormatQuota(userQuota), logger.FormatQuota(quota))
-	}
+	if !relayInfo.UserUnlimited {
+		if userQuota < quota {
+			return fmt.Errorf("user quota is not enough, user quota: %s, need quota: %s", logger.FormatQuota(userQuota), logger.FormatQuota(quota))
+		}
 
-	if !token.UnlimitedQuota && token.RemainQuota < quota {
-		return fmt.Errorf("token quota is not enough, token remain quota: %s, need quota: %s", logger.FormatQuota(token.RemainQuota), logger.FormatQuota(quota))
+		if !token.UnlimitedQuota && token.RemainQuota < quota {
+			return fmt.Errorf("token quota is not enough, token remain quota: %s, need quota: %s", logger.FormatQuota(token.RemainQuota), logger.FormatQuota(quota))
+		}
 	}
 
 	err = PostConsumeQuota(relayInfo, quota, 0, false)
@@ -407,6 +409,9 @@ func PreConsumeTokenQuota(relayInfo *relaycommon.RelayInfo, quota int) error {
 	if quota < 0 {
 		return errors.New("quota cannot be negative")
 	}
+	if relayInfo.UserUnlimited {
+		return nil
+	}
 	if relayInfo.IsPlayground {
 		return nil
 	}
@@ -437,45 +442,53 @@ func PostConsumeQuota(relayInfo *relaycommon.RelayInfo, quota int, preConsumedQu
 
 func postConsumeQuotaWithResult(relayInfo *relaycommon.RelayInfo, quota int, preConsumedQuota int, sendEmail bool) (result postConsumeQuotaResult, err error) {
 
-	// 1) Consume from wallet quota OR subscription item
-	if relayInfo != nil && relayInfo.BillingSource == BillingSourceSubscription {
-		if relayInfo.SubscriptionId == 0 {
-			return result, errors.New("subscription id is missing")
-		}
-		delta := int64(quota)
-		if delta != 0 {
-			if err := model.PostConsumeUserSubscriptionDelta(relayInfo.SubscriptionId, delta); err != nil {
+	// 1) Consume from wallet quota OR subscription item.
+	// 用户级无限额度（issue #4）：只保留计费结果供日志/统计使用，不扣任何额度。
+	if relayInfo != nil && relayInfo.UserUnlimited {
+		// 未扣任何额度：如实报告 FundingApplied/TokenApplied=false，
+		// 调用方（如 Midjourney）据此避免把「未扣费」的任务标记成可退款。
+		result.FundingApplied = false
+		result.TokenApplied = false
+	} else {
+		if relayInfo != nil && relayInfo.BillingSource == BillingSourceSubscription {
+			if relayInfo.SubscriptionId == 0 {
+				return result, errors.New("subscription id is missing")
+			}
+			delta := int64(quota)
+			if delta != 0 {
+				if err := model.PostConsumeUserSubscriptionDelta(relayInfo.SubscriptionId, delta); err != nil {
+					return result, err
+				}
+				relayInfo.SubscriptionPostDelta += delta
+			}
+		} else {
+			// Wallet
+			if quota > 0 {
+				err = model.DecreaseUserQuota(relayInfo.UserId, quota, false)
+			} else {
+				err = model.IncreaseUserQuota(relayInfo.UserId, -quota, false)
+			}
+			if err != nil {
 				return result, err
 			}
-			relayInfo.SubscriptionPostDelta += delta
 		}
-	} else {
-		// Wallet
-		if quota > 0 {
-			err = model.DecreaseUserQuota(relayInfo.UserId, quota, false)
-		} else {
-			err = model.IncreaseUserQuota(relayInfo.UserId, -quota, false)
-		}
-		if err != nil {
-			return result, err
-		}
-	}
-	result.FundingApplied = true
+		result.FundingApplied = true
 
-	if !relayInfo.IsPlayground {
-		if quota > 0 {
-			err = model.DecreaseTokenQuota(relayInfo.TokenId, relayInfo.TokenKey, quota)
-		} else {
-			err = model.IncreaseTokenQuota(relayInfo.TokenId, relayInfo.TokenKey, -quota)
+		if !relayInfo.IsPlayground {
+			if quota > 0 {
+				err = model.DecreaseTokenQuota(relayInfo.TokenId, relayInfo.TokenKey, quota)
+			} else {
+				err = model.IncreaseTokenQuota(relayInfo.TokenId, relayInfo.TokenKey, -quota)
+			}
+			if err != nil {
+				return result, err
+			}
+			result.TokenApplied = true
 		}
-		if err != nil {
-			return result, err
-		}
-		result.TokenApplied = true
 	}
 
 	if sendEmail {
-		if (quota + preConsumedQuota) != 0 {
+		if (quota+preConsumedQuota) != 0 && !relayInfo.UserUnlimited {
 			checkAndSendQuotaNotify(relayInfo, quota, preConsumedQuota)
 		}
 	}

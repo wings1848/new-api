@@ -570,6 +570,13 @@ func TokenAuth() func(c *gin.Context) {
 			key = parts[0]
 		}
 		token, err := model.ValidateUserToken(key)
+		if err != nil && token != nil && errors.Is(err, model.ErrTokenQuotaExhausted) {
+			// 用户级无限额度会覆盖令牌额度：令牌耗尽不应阻止无限用户（issue #4）。
+			if userCache, cacheErr := model.GetUserCache(token.UserId); cacheErr == nil && userCache.UnlimitedQuota {
+				logger.LogInfo(c, common.LogText("user %d has unlimited quota, allowing exhausted token %d", token.UserId, token.Id))
+				err = nil
+			}
+		}
 		if token != nil {
 			id := c.GetInt("id")
 			if id == 0 {

@@ -148,3 +148,17 @@ func refundWithRetry(fn func() error) error {
 	}
 	return lastErr
 }
+
+// ---------------------------------------------------------------------------
+// UnlimitedFunding — 用户级无限额度（issue #4）
+// ---------------------------------------------------------------------------
+
+// UnlimitedFunding is the wallet source of a user marked unlimited: the request
+// is recorded but never charged. Pre-consume, settlement, and refund are all
+// no-ops; usage logs and quota statistics keep the real numbers.
+type UnlimitedFunding struct{}
+
+func (u *UnlimitedFunding) Source() string       { return BillingSourceWallet }
+func (u *UnlimitedFunding) PreConsume(int) error { return nil }
+func (u *UnlimitedFunding) Settle(int) error     { return nil }
+func (u *UnlimitedFunding) Refund() error        { return nil }

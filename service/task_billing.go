@@ -49,6 +49,9 @@ func LogTaskConsumption(c *gin.Context, info *relaycommon.RelayInfo, task *model
 	}
 	other := model.NewLogOther()
 	other.SetPublic("is_task", true)
+	if info.UserUnlimited {
+		other.SetPublic("unlimited_quota", true)
+	}
 	other.SetPublic("request_path", c.Request.URL.Path)
 	if taskDeliveredInline(c, task) {
 		other.SetPublic("task_sync", true)
@@ -114,6 +117,9 @@ func taskIsSubscription(task *model.Task) bool {
 
 // taskAdjustFunding 调整任务的资金来源（钱包或订阅），delta > 0 表示扣费，delta < 0 表示退还。
 func taskAdjustFunding(task *model.Task, delta int) error {
+	if task.PrivateData.Unlimited {
+		return nil
+	}
 	if taskIsSubscription(task) {
 		return model.PostConsumeUserSubscriptionDelta(task.PrivateData.SubscriptionId, int64(delta))
 	}
@@ -126,7 +132,7 @@ func taskAdjustFunding(task *model.Task, delta int) error {
 // taskAdjustTokenQuota 调整任务的令牌额度，delta > 0 表示扣费，delta < 0 表示退还。
 // 需要通过 resolveTokenKey 运行时获取 key（不从 PrivateData 中读取）。
 func taskAdjustTokenQuota(ctx context.Context, task *model.Task, delta int) {
-	if task.PrivateData.TokenId <= 0 || delta == 0 {
+	if task.PrivateData.Unlimited || task.PrivateData.TokenId <= 0 || delta == 0 {
 		return
 	}
 	tokenKey := resolveTokenKey(ctx, task.PrivateData.TokenId, task.TaskID)
@@ -149,6 +155,9 @@ func taskBillingOther(task *model.Task) *model.LogOther {
 	other := model.NewLogOther()
 	// 前端列表按 is_task 选择任务档位渲染分支,缺失会把差额/退款日志误判成普通 relay 动态计费
 	other.SetPublic("is_task", true)
+	if task.PrivateData.Unlimited {
+		other.SetPublic("unlimited_quota", true)
+	}
 	if bc := task.PrivateData.BillingContext; bc != nil {
 		other.SetPublic("model_price", bc.ModelPrice)
 		if bc.ModelRatio > 0 {

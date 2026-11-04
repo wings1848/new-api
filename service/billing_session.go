@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
@@ -62,9 +63,9 @@ func (s *BillingSession) Settle(actualQuota int) error {
 		}
 		s.fundingSettled = true
 	}
-	// 2) 调整令牌额度
+	// 2) 调整令牌额度（无限额度用户不扣令牌余额）
 	var tokenErr error
-	if !s.relayInfo.IsPlayground {
+	if !s.relayInfo.IsPlayground && !s.relayInfo.UserUnlimited {
 		if delta > 0 {
 			tokenErr = model.DecreaseTokenQuota(s.relayInfo.TokenId, s.relayInfo.TokenKey, delta)
 		} else {
@@ -104,6 +105,7 @@ func (s *BillingSession) Refund(c *gin.Context) {
 	tokenId := s.relayInfo.TokenId
 	tokenKey := s.relayInfo.TokenKey
 	isPlayground := s.relayInfo.IsPlayground
+	userUnlimited := s.relayInfo.UserUnlimited
 	tokenConsumed := s.tokenConsumed
 	extraReserved := s.extraReserved
 	subscriptionId := s.relayInfo.SubscriptionId
@@ -120,7 +122,7 @@ func (s *BillingSession) Refund(c *gin.Context) {
 			}
 		}
 		// 2) 退还令牌额度
-		if tokenConsumed > 0 && !isPlayground {
+		if tokenConsumed > 0 && !isPlayground && !userUnlimited {
 			if err := model.IncreaseTokenQuota(tokenId, tokenKey, tokenConsumed); err != nil {
 				common.SysLog(common.LogText("error refunding token quota: %s", err.Error()))
 			}
@@ -167,6 +169,10 @@ func (s *BillingSession) ReserveBeforeSubmit(targetQuota int) error {
 func (s *BillingSession) reserve(targetQuota int, requireAvailableQuota bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if s.relayInfo != nil && s.relayInfo.UserUnlimited {
+		return nil
+	}
 
 	if s.relayInfo != nil {
 		_, imageRequest := s.relayInfo.Request.(*dto.ImageRequest)
@@ -295,6 +301,8 @@ func (s *BillingSession) reserveFunding(delta int, requireAvailableQuota bool) e
 			)
 		}
 		return nil
+	case *UnlimitedFunding:
+		return nil
 	default:
 		return types.NewError(fmt.Errorf("unsupported funding source: %s", s.funding.Source()), types.ErrorCodeUpdateDataError, types.ErrOptionWithSkipRetry())
 	}
@@ -316,7 +324,7 @@ func (s *BillingSession) rollbackFundingReserve(delta int) {
 }
 
 func (s *BillingSession) reserveToken(delta int) error {
-	if delta <= 0 || s.relayInfo.IsPlayground {
+	if delta <= 0 || s.relayInfo.IsPlayground || s.relayInfo.UserUnlimited {
 		return nil
 	}
 	if err := PreConsumeTokenQuota(s.relayInfo, delta); err != nil {
@@ -389,6 +397,20 @@ func (s *BillingSession) syncRelayInfo() {
 func NewBillingSession(c *gin.Context, relayInfo *relaycommon.RelayInfo, preConsumedQuota int) (*BillingSession, *types.NewAPIError) {
 	if relayInfo == nil {
 		return nil, types.NewError(fmt.Errorf("relayInfo is nil"), types.ErrorCodeInvalidRequest, types.ErrOptionWithSkipRetry())
+	}
+
+	// 用户级无限额度（issue #4）：不扣钱包也不扣订阅，请求与用量照常记录。
+	// 上下文兜底让调用方（含测试）无需构造完整 RelayInfo。
+	if relayInfo.UserUnlimited || common.GetContextKeyBool(c, constant.ContextKeyUserUnlimitedQuota) {
+		relayInfo.UserUnlimited = true
+		session := &BillingSession{
+			relayInfo: relayInfo,
+			funding:   &UnlimitedFunding{},
+			trusted:   true,
+			lang:      i18n.StatedLang(c),
+		}
+		session.syncRelayInfo()
+		return session, nil
 	}
 
 	pref := common.NormalizeBillingPreference(relayInfo.UserSetting.BillingPreference)

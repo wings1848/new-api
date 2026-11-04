@@ -122,7 +122,18 @@ func ChargeViolationFeeIfNeeded(ctx *gin.Context, relayInfo *relaycommon.RelayIn
 		return false
 	}
 
-	if err := PostConsumeQuota(relayInfo, feeQuota, 0, true); err != nil {
+	if relayInfo.UserUnlimited {
+		// 违规罚金是惩罚而非模型用量：无限额度用户同样扣罚（与普通用户一致，可扣成负余额）。
+		if err := model.DecreaseUserQuota(relayInfo.UserId, feeQuota, false); err != nil {
+			logger.LogError(ctx, common.LogText("failed to charge violation fee: %s", err.Error()))
+			return false
+		}
+		if relayInfo.TokenId > 0 {
+			if err := model.DecreaseTokenQuota(relayInfo.TokenId, relayInfo.TokenKey, feeQuota); err != nil {
+				logger.LogError(ctx, common.LogText("failed to charge violation fee against the token: %s", err.Error()))
+			}
+		}
+	} else if err := PostConsumeQuota(relayInfo, feeQuota, 0, true); err != nil {
 		logger.LogError(ctx, common.LogText("failed to charge violation fee: %s", err.Error()))
 		return false
 	}
@@ -145,6 +156,7 @@ func ChargeViolationFeeIfNeeded(ctx *gin.Context, relayInfo *relaycommon.RelayIn
 		"upstream_error_type":  oai.Type,
 		"upstream_error_code":  fmt.Sprintf("%v", oai.Code),
 		"violation_fee_marker": CSAMViolationMarker,
+		"unlimited_quota":      relayInfo.UserUnlimited,
 	})
 
 	model.RecordConsumeLog(ctx, relayInfo.UserId, model.RecordConsumeLogParams{

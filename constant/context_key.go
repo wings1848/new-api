@@ -56,8 +56,11 @@ const (
 	ContextKeyUserStatus  ContextKey = "user_status"
 	ContextKeyUserEmail   ContextKey = "user_email"
 	ContextKeyUserGroup   ContextKey = "user_group"
-	ContextKeyUsingGroup  ContextKey = "group"
-	ContextKeyUserName    ContextKey = "username"
+	// ContextKeyUserUnlimitedQuota marks a user exempt from wallet and token
+	// quota charges; usage is still recorded (admin-managed, issue #4).
+	ContextKeyUserUnlimitedQuota ContextKey = "user_unlimited_quota"
+	ContextKeyUsingGroup         ContextKey = "group"
+	ContextKeyUserName           ContextKey = "username"
 
 	ContextKeyLocalCountTokens ContextKey = "local_count_tokens"
 
