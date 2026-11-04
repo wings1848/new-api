@@ -173,6 +173,14 @@ func SetApiRouter(router *gin.Engine) {
 			}
 		}
 
+		// Window-dimension usage APIs (issue #31)
+		usageWindowRoute := apiRouter.Group("/usage-window")
+		usageWindowRoute.Use(middleware.UserAuth())
+		{
+			usageWindowRoute.GET("/summary", controller.GetUsageWindowSummary)
+		}
+		apiRouter.GET("/usage-window/report", middleware.AdminAuth(), controller.GetUsageWindowReport)
+
 		// Privacy dry-run audit (issue #13)
 		privacyAuditRoute := apiRouter.Group("/privacy-audit")
 		privacyAuditRoute.Use(middleware.AdminAuth())
