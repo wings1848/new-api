@@ -62,6 +62,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import {
   ADMIN_PERMISSION_ACTIONS,
@@ -86,6 +87,7 @@ import {
   getUser,
   getGroups,
   getPermissionCatalog,
+  setUserUnlimitedQuota,
 } from '../api'
 import { BINDING_FIELDS, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../constants'
 import {
@@ -119,6 +121,7 @@ export function UsersMutateDrawer({
   // Matrix as loaded from the server; an unchanged matrix is not resubmitted so
   // routine edits of an administrator do not require step-up verification.
   const loadedPermissions = useRef<AdminPermissionMatrix | undefined>(undefined)
+  const loadedUnlimitedQuota = useRef(false)
 
   // Fetch groups
   const { data: groupsData } = useQuery({
@@ -149,6 +152,7 @@ export function UsersMutateDrawer({
         .then((result) => {
           if (result.success && result.data) {
             loadedPermissions.current = result.data.admin_permissions
+            loadedUnlimitedQuota.current = result.data.unlimited_quota ?? false
             form.reset(transformUserToFormDefaults(result.data))
           } else {
             handleServerError(result, t('Failed to load'))
@@ -157,6 +161,7 @@ export function UsersMutateDrawer({
         .catch((error) => handleServerError(error, t('Failed to load')))
     } else if (open && !isUpdate) {
       // For create, reset to defaults
+      loadedUnlimitedQuota.current = false
       form.reset(USER_FORM_DEFAULT_VALUES)
     }
   }, [open, isUpdate, currentRow, form, t])
@@ -238,6 +243,20 @@ export function UsersMutateDrawer({
         : await createUser(payload, proofToken)
 
       if (result.success) {
+        if (isUpdate && currentRow) {
+          const nextUnlimited = data.unlimited_quota ?? false
+          if (nextUnlimited !== loadedUnlimitedQuota.current) {
+            const manageResult = await setUserUnlimitedQuota(
+              currentRow.id,
+              nextUnlimited
+            )
+            if (!manageResult.success) {
+              handleServerError(manageResult, t('Failed to save'))
+              return
+            }
+            loadedUnlimitedQuota.current = nextUnlimited
+          }
+        }
         toast.success(
           isUpdate
             ? t(SUCCESS_MESSAGES.USER_UPDATED)
@@ -264,6 +283,7 @@ export function UsersMutateDrawer({
       const result = requireServerSuccess(await getUser(currentRow.id))
       if (result.success && result.data) {
         loadedPermissions.current = result.data.admin_permissions
+        loadedUnlimitedQuota.current = result.data.unlimited_quota ?? false
         form.reset(transformUserToFormDefaults(result.data))
       }
       triggerRefresh()
@@ -493,6 +513,29 @@ export function UsersMutateDrawer({
                           />
                         </FormControl>
                         <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name='unlimited_quota'
+                    render={({ field }) => (
+                      <FormItem className='flex flex-row items-center justify-between gap-4'>
+                        <div className='space-y-1'>
+                          <FormLabel>{t('Unlimited')}</FormLabel>
+                          <FormDescription>
+                            {t(
+                              'No wallet or token quota is charged; usage is still logged.'
+                            )}
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value ?? false}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
                       </FormItem>
                     )}
                   />

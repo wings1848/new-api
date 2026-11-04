@@ -6744,6 +6744,7 @@
     "Unknown setting type: {{type}}": "Unknown setting type: {{type}}",
     "Unknown version": "Unknown version",
     "Unlimited": "Unlimited",
+    "No wallet or token quota is charged; usage is still logged.": "No wallet or token quota is charged; usage is still logged.",
     "Unlimited Quota": "Unlimited Quota",
     "Unrecognized status code": "Unrecognized status code",
     "Unsaved changes": "Unsaved changes",

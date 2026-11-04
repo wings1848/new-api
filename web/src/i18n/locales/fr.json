@@ -6744,6 +6744,7 @@
     "Unknown setting type: {{type}}": "Type de paramètre inconnu : {{type}}",
     "Unknown version": "Version inconnue",
     "Unlimited": "Illimité",
+    "No wallet or token quota is charged; usage is still logged.": "Aucun quota de portefeuille ou de jeton n'est débité ; l'utilisation reste enregistrée.",
     "Unlimited Quota": "Quota illimité",
     "Unrecognized status code": "Code d'état non reconnu",
     "Unsaved changes": "Modifications non enregistrées",

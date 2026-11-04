@@ -43,6 +43,7 @@ export const userSchema = z.object({
   telegram_id: z.string().optional(),
   email: z.string().optional(),
   quota: z.number(),
+  unlimited_quota: z.boolean().optional(),
   used_quota: z.number(),
   request_count: z.number(),
   group: z.string(),
@@ -135,8 +136,15 @@ export type ManageUserAction =
   | 'disable'
   | 'delete'
   | 'add_quota'
+  | 'set_unlimited_quota'
 
 export type QuotaAdjustMode = 'add' | 'subtract' | 'override'
+
+export interface ManageUserUnlimitedQuotaPayload {
+  id: number
+  action: 'set_unlimited_quota'
+  value: number
+}
 
 export interface ManageUserQuotaPayload {
   id: number
