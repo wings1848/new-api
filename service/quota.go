@@ -493,6 +493,8 @@ func postConsumeQuotaWithResult(relayInfo *relaycommon.RelayInfo, quota int, pre
 		}
 	}
 
+	recordQuotaWindowUsageFromRelay(relayInfo, quota)
+
 	return result, nil
 }
 
