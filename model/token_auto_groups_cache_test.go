@@ -79,3 +79,26 @@ func cacheSetTokenForTest(token Token) error {
 	_, err := cacheInitToken(token)
 	return err
 }
+
+// TestValidateUserTokenReportsExhaustedQuotaForUnlimitedBypass keeps the
+// token-level gate distinct: an exhausted token reports ErrTokenQuotaExhausted
+// so TokenAuth can let a user-level unlimited user through (issue #4).
+func TestValidateUserTokenReportsExhaustedQuotaForUnlimitedBypass(t *testing.T) {
+	truncateTables(t)
+	user := User{Username: "exhausted-token-user", Password: "password", Role: common.RoleCommonUser, Status: common.UserStatusEnabled, Group: "default", AuthVersion: 1}
+	require.NoError(t, DB.Create(&user).Error)
+	token := Token{UserId: user.Id, Key: "exhausted-token-key", Name: "exhausted", Status: common.TokenStatusEnabled, ExpiredTime: -1, RemainQuota: 0}
+	require.NoError(t, DB.Create(&token).Error)
+
+	_, err := ValidateUserToken(token.Key)
+	require.ErrorIs(t, err, ErrTokenQuotaExhausted)
+
+	// The first failed validation marks the token exhausted when Redis is off;
+	// the admin enabling unlimited quota must also allow a re-enabled token.
+	require.NoError(t, DB.Model(&Token{}).Where("id = ?", token.Id).Updates(map[string]any{
+		"unlimited_quota": true,
+		"status":          common.TokenStatusEnabled,
+	}).Error)
+	_, err = ValidateUserToken(token.Key)
+	require.NoError(t, err)
+}

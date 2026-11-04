@@ -20,6 +20,9 @@ var (
 var (
 	ErrTokenNotProvided = errors.New("token not provided")
 	ErrTokenInvalid     = errors.New("token invalid")
+	// ErrTokenQuotaExhausted means the token itself is valid but its remain
+	// quota is used up; an unlimited-quota user may still be allowed to use it.
+	ErrTokenQuotaExhausted = errors.New("token quota exhausted")
 )
 
 // Redemption errors

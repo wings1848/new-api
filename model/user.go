@@ -1351,7 +1351,11 @@ func SetUserUnlimitedQuota(userId int, unlimited bool) error {
 	if err := DB.Model(&User{}).Where("id = ?", userId).Update("unlimited_quota", unlimited).Error; err != nil {
 		return err
 	}
-	return PublishUserAuthCache(userId)
+	// 写库已经生效；缓存发布失败只记日志，避免向管理员报「失败」却已改库。
+	if err := PublishUserAuthCache(userId); err != nil {
+		common.SysLog(common.LogText("failed to publish user auth cache after unlimited quota update for user %d: %s", userId, err.Error()))
+	}
+	return nil
 }
 
 func IncreaseUserQuota(id int, quota int, db bool) (err error) {

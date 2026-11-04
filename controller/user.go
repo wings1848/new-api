@@ -1245,27 +1245,36 @@ func ManageUser(c *gin.Context) {
 // flag. Both directions use an explicit column update: a GORM struct update
 // skips the false zero value and would silently ignore "disable".
 func manageUserUnlimitedQuota(c *gin.Context, req ManageRequest) {
-	user := model.User{Id: req.Id}
-	model.DB.Unscoped().Where(&user).First(&user)
-	if user.Id == 0 {
-		common.ApiErrorT(c, "User does not exist")
+	if req.Id <= 0 {
+		common.ApiErrorT(c, "Invalid parameters")
 		return
 	}
+	enabled := req.Value != 0
+	success := false
+	auditFields := map[string]any{
+		"action":          req.Action,
+		"id":              req.Id,
+		"unlimited_quota": enabled,
+	}
+	defer func() {
+		auditFields["success"] = success
+		recordManageAuditFor(c, req.Id, "user.manage", auditFields)
+	}()
+	user, err := model.GetUserById(req.Id, true)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	auditFields["username"] = user.Username
 	if !canManageTargetRole(c.GetInt("role"), user.Role) {
 		common.ApiErrorT(c, "No permission to update users of same or higher permission level")
 		return
 	}
-	enabled := req.Value != 0
 	if err := model.SetUserUnlimitedQuota(user.Id, enabled); err != nil {
 		common.ApiError(c, err)
 		return
 	}
-	recordManageAuditFor(c, user.Id, "user.manage", map[string]any{
-		"action":          req.Action,
-		"username":        user.Username,
-		"id":              user.Id,
-		"unlimited_quota": enabled,
-	})
+	success = true
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",

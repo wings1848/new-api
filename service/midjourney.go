@@ -71,6 +71,18 @@ func SettleMidjourneyTaskBilling(relayInfo *relaycommon.RelayInfo, task *model.M
 		return false, errors.New("Midjourney task must be persisted before billing")
 	}
 
+	// 用户级无限额度：不扣费，也不保留可退款状态——否则任务失败退款会把额度加回来。
+	// 返回 true 让调用点仍写消费日志（调用点用 priceData.Quota 记录真实用量）。
+	if relayInfo.UserUnlimited {
+		task.Quota = 0
+		task.TokenId = 0
+		task.BillingChannelId = 0
+		if updateErr := task.UpdateBillingState(); updateErr != nil {
+			return false, fmt.Errorf("clear Midjourney billing state: %w", updateErr)
+		}
+		return true, nil
+	}
+
 	result, billingErr := postConsumeQuotaWithResult(relayInfo, task.Quota, 0, true)
 	if !result.FundingApplied {
 		task.Quota = 0

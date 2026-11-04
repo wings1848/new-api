@@ -277,6 +277,11 @@ func RelaySwapFace(c *gin.Context, info *relaycommon.RelayInfo) *dto.MidjourneyR
 	if billingApplied {
 		billingChannelId := midjourneyTask.GetBillingChannelId()
 		tokenName := c.GetString("token_name")
+		logQuota := priceData.Quota
+		logTokenId := midjourneyTask.TokenId
+		if logTokenId == 0 {
+			logTokenId = info.TokenId
+		}
 		logContent := []*common.Message{common.NewMessage("Model fixed price {{model_price}}, group ratio {{group_ratio}}, action {{action}}", map[string]any{
 			"model_price": fmt.Sprintf("%.2f", priceData.ModelPrice),
 			"group_ratio": fmt.Sprintf("%.2f", priceData.GroupRatioInfo.GroupRatio),
@@ -288,14 +293,14 @@ func RelaySwapFace(c *gin.Context, info *relaycommon.RelayInfo) *dto.MidjourneyR
 			ChannelId: billingChannelId,
 			ModelName: modelName,
 			TokenName: tokenName,
-			Quota:     midjourneyTask.Quota,
+			Quota:     logQuota,
 			Content:   logContent,
-			TokenId:   midjourneyTask.TokenId,
+			TokenId:   logTokenId,
 			Group:     info.UsingGroup,
 			Other:     other,
 		})
-		model.UpdateUserUsedQuotaAndRequestCount(info.UserId, midjourneyTask.Quota)
-		model.UpdateChannelUsedQuota(billingChannelId, midjourneyTask.Quota)
+		model.UpdateUserUsedQuotaAndRequestCount(info.UserId, logQuota)
+		model.UpdateChannelUsedQuota(billingChannelId, logQuota)
 	}
 	c.Writer.WriteHeader(mjResp.StatusCode)
 	respBody, err := common.Marshal(midjResponse)
@@ -655,6 +660,11 @@ func RelayMidjourneySubmit(c *gin.Context, relayInfo *relaycommon.RelayInfo) *dt
 	if billingApplied {
 		billingChannelId := midjourneyTask.GetBillingChannelId()
 		tokenName := c.GetString("token_name")
+		logQuota := priceData.Quota
+		logTokenId := midjourneyTask.TokenId
+		if logTokenId == 0 {
+			logTokenId = relayInfo.TokenId
+		}
 		logContent := []*common.Message{common.NewMessage("Model fixed price {{model_price}}, group ratio {{group_ratio}}, action {{action}}, ID {{id}}", map[string]any{
 			"model_price": fmt.Sprintf("%.2f", priceData.ModelPrice),
 			"group_ratio": fmt.Sprintf("%.2f", priceData.GroupRatioInfo.GroupRatio),
@@ -667,14 +677,14 @@ func RelayMidjourneySubmit(c *gin.Context, relayInfo *relaycommon.RelayInfo) *dt
 			ChannelId: billingChannelId,
 			ModelName: modelName,
 			TokenName: tokenName,
-			Quota:     midjourneyTask.Quota,
+			Quota:     logQuota,
 			Content:   logContent,
-			TokenId:   midjourneyTask.TokenId,
+			TokenId:   logTokenId,
 			Group:     relayInfo.UsingGroup,
 			Other:     other,
 		})
-		model.UpdateUserUsedQuotaAndRequestCount(relayInfo.UserId, midjourneyTask.Quota)
-		model.UpdateChannelUsedQuota(billingChannelId, midjourneyTask.Quota)
+		model.UpdateUserUsedQuotaAndRequestCount(relayInfo.UserId, logQuota)
+		model.UpdateChannelUsedQuota(billingChannelId, logQuota)
 	}
 
 	if midjResponse.Code == 22 { //22-排队中，说明任务已存在

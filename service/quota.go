@@ -409,6 +409,9 @@ func PreConsumeTokenQuota(relayInfo *relaycommon.RelayInfo, quota int) error {
 	if quota < 0 {
 		return errors.New("quota cannot be negative")
 	}
+	if relayInfo.UserUnlimited {
+		return nil
+	}
 	if relayInfo.IsPlayground {
 		return nil
 	}
@@ -442,8 +445,10 @@ func postConsumeQuotaWithResult(relayInfo *relaycommon.RelayInfo, quota int, pre
 	// 1) Consume from wallet quota OR subscription item.
 	// 用户级无限额度（issue #4）：只保留计费结果供日志/统计使用，不扣任何额度。
 	if relayInfo != nil && relayInfo.UserUnlimited {
-		result.FundingApplied = true
-		result.TokenApplied = !relayInfo.IsPlayground
+		// 未扣任何额度：如实报告 FundingApplied/TokenApplied=false，
+		// 调用方（如 Midjourney）据此避免把「未扣费」的任务标记成可退款。
+		result.FundingApplied = false
+		result.TokenApplied = false
 	} else {
 		if relayInfo != nil && relayInfo.BillingSource == BillingSourceSubscription {
 			if relayInfo.SubscriptionId == 0 {
@@ -483,7 +488,7 @@ func postConsumeQuotaWithResult(relayInfo *relaycommon.RelayInfo, quota int, pre
 	}
 
 	if sendEmail {
-		if (quota+preConsumedQuota) != 0 && (relayInfo == nil || !relayInfo.UserUnlimited) {
+		if (quota+preConsumedQuota) != 0 && !relayInfo.UserUnlimited {
 			checkAndSendQuotaNotify(relayInfo, quota, preConsumedQuota)
 		}
 	}

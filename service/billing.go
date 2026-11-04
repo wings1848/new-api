@@ -67,7 +67,10 @@ func SettleBilling(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, actualQuo
 		preConsumed := relayInfo.Billing.GetPreConsumedQuota()
 		delta := actualQuota - preConsumed
 
-		if delta > 0 {
+		if relayInfo.UserUnlimited {
+			logger.LogInfo(ctx, common.LogText("user %d has unlimited quota, skipping the charge of %s (pre-consumed %s)",
+				relayInfo.UserId, logger.FormatQuota(actualQuota), logger.FormatQuota(preConsumed)))
+		} else if delta > 0 {
 			logger.LogInfo(ctx, common.LogText("charging the difference after pre-consume: %s (actual %s, pre-consumed %s)",
 				logger.FormatQuota(delta),
 				logger.FormatQuota(actualQuota),
