@@ -122,6 +122,11 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"GET /api/user/2fa/stats":                          accessTokenScopeRule("user:read"),
 	"DELETE /api/user/:id/2fa":                         accessTokenScopeRule("user:write"),
 
+	// router/api-router.go: /api/privacy-audit
+	"GET /api/privacy-audit/stats":    accessTokenScopeRule("log:read"),
+	"GET /api/privacy-audit/events":   accessTokenScopeRule("log:read"),
+	"POST /api/privacy-audit/cleanup": accessTokenSessionRule,
+
 	// router/api-router.go: /api/quota-window
 	"GET /api/quota-window/self":               accessTokenScopeRule("wallet:read"),
 	"GET /api/quota-window/admin/users/:id":    accessTokenScopeRule("user:read"),

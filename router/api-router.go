@@ -173,6 +173,15 @@ func SetApiRouter(router *gin.Engine) {
 			}
 		}
 
+		// Privacy dry-run audit (issue #13)
+		privacyAuditRoute := apiRouter.Group("/privacy-audit")
+		privacyAuditRoute.Use(middleware.AdminAuth())
+		{
+			privacyAuditRoute.GET("/stats", controller.GetPrivacyAuditStats)
+			privacyAuditRoute.GET("/events", controller.GetPrivacyAuditEvents)
+			privacyAuditRoute.POST("/cleanup", controller.CleanupPrivacyAuditEvents)
+		}
+
 		// 5h/7d quota windows (issue #7)
 		quotaWindowRoute := apiRouter.Group("/quota-window")
 		quotaWindowRoute.Use(middleware.UserAuth())
