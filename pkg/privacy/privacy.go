@@ -230,7 +230,7 @@ func (e *Engine) RedactText(text string) Result {
 		builder.WriteString(text[last:match.start])
 		finding := Finding{
 			RuleID: match.rule.rule.ID,
-			Type:   normalizeType(match.rule.rule.Type),
+			Type:   match.rule.rule.Type,
 			Action: match.rule.rule.Action,
 			Value:  match.value,
 			Start:  match.start,
@@ -241,11 +241,11 @@ func (e *Engine) RedactText(text string) Result {
 			builder.WriteString(text[match.start:match.end])
 		case ActionBlock:
 			result.Blocked = true
-			finding.Placeholder = e.placeholderFor(finding.Type, match.value)
+			finding.Placeholder = e.placeholderFor(normalizeType(finding.Type), match.value)
 			builder.WriteString(finding.Placeholder)
 			replacements[finding.Placeholder] = match.value
 		default:
-			finding.Placeholder = e.placeholderFor(finding.Type, match.value)
+			finding.Placeholder = e.placeholderFor(normalizeType(finding.Type), match.value)
 			builder.WriteString(finding.Placeholder)
 			replacements[finding.Placeholder] = match.value
 		}

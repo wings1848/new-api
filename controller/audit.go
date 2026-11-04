@@ -27,6 +27,7 @@ var auditContentTemplates = map[string]string{
 	"user.quota_subtract":       "Decreased user quota by ${quota}",
 	"user.quota_override":       "Overrode user quota from ${from} to ${to}",
 	"user.quota_window_update":  "Updated quota windows for user ${username} (ID: ${id}): 5h=${window_5h_quota} 7d=${window_7d_quota}",
+	"privacy.audit_cleanup":     "Cleaned privacy audit records older than ${older_than_days} days (${deleted_events} events, ${deleted_findings} findings)",
 	"group.quota_window_update": "Updated quota windows for group ${group}: 5h=${window_5h_quota} 7d=${window_7d_quota}",
 	"user.binding_clear":        "Cleared ${bindingType} binding for user ${username}",
 	"user.2fa_disable":          "Force-disabled two-factor authentication for the user",

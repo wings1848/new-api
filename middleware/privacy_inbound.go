@@ -12,9 +12,11 @@ import (
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/logger"
+	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/pkg/privacy"
 	"github.com/QuantumNous/new-api/relaykit/types"
 
+	"github.com/bytedance/gopkg/util/gopool"
 	"github.com/gin-gonic/gin"
 )
 
@@ -133,11 +135,29 @@ func PrivacyInbound() gin.HandlerFunc {
 			c.Next()
 			return
 		}
-		redacted, replacements, findings, blocked, err := redactPrivacyJSONBody(body, config.engine)
+		collector := newPrivacyAuditCollector()
+		redacted, replacements, findings, blocked, err := redactPrivacyJSONBody(body, config.engine, collector)
 		if err != nil {
 			logger.LogWarn(c, common.LogText("privacy: cannot parse request body, passing it through: %v", err))
 			c.Next()
 			return
+		}
+		if findings > 0 {
+			event := model.PrivacyAuditEvent{
+				UserId:       c.GetInt("id"),
+				Username:     c.GetString("username"),
+				RequestId:    c.GetString(common.RequestIdKey),
+				Path:         c.Request.URL.Path,
+				Mode:         string(config.mode),
+				FindingCount: findings,
+				CreatedAt:    common.GetTimestamp(),
+			}
+			auditFindings := collector.auditFindings()
+			gopool.Go(func() {
+				if err := model.RecordPrivacyAuditEvent(&event, auditFindings); err != nil {
+					common.SysLog(common.LogText("failed to record privacy audit event (request=%s): %v", event.RequestId, err))
+				}
+			})
 		}
 		if config.mode == privacyModeWarn {
 			if findings > 0 {
@@ -177,9 +197,57 @@ func PrivacyInbound() gin.HandlerFunc {
 	}
 }
 
+// privacyAuditSummary aggregates findings per rule so the audit table only
+// stores rule ids, types, actions and counts — never the detected values.
+type privacyAuditSummary struct {
+	RuleID string
+	Type   string
+	Action privacy.Action
+	Count  int
+}
+
+type privacyAuditCollector struct {
+	order  []string
+	counts map[string]*privacyAuditSummary
+}
+
+func newPrivacyAuditCollector() *privacyAuditCollector {
+	return &privacyAuditCollector{counts: make(map[string]*privacyAuditSummary)}
+}
+
+func (c *privacyAuditCollector) add(findings []privacy.Finding) {
+	for _, finding := range findings {
+		key := finding.RuleID + "|" + finding.Type + "|" + string(finding.Action)
+		summary, ok := c.counts[key]
+		if !ok {
+			summary = &privacyAuditSummary{RuleID: finding.RuleID, Type: finding.Type, Action: finding.Action}
+			c.counts[key] = summary
+			c.order = append(c.order, key)
+		}
+		summary.Count++
+	}
+}
+
+func (c *privacyAuditCollector) auditFindings() []model.PrivacyAuditFinding {
+	if c == nil || len(c.order) == 0 {
+		return nil
+	}
+	findings := make([]model.PrivacyAuditFinding, 0, len(c.order))
+	for _, key := range c.order {
+		summary := c.counts[key]
+		findings = append(findings, model.PrivacyAuditFinding{
+			RuleId: summary.RuleID,
+			Type:   summary.Type,
+			Action: string(summary.Action),
+			Count:  summary.Count,
+		})
+	}
+	return findings
+}
+
 // redactPrivacyJSONBody walks the top-level object and rewrites the textual
 // fields. Numbers, ids, tool declarations and binary payloads are preserved.
-func redactPrivacyJSONBody(body []byte, engine *privacy.Engine) ([]byte, map[string]string, int, bool, error) {
+func redactPrivacyJSONBody(body []byte, engine *privacy.Engine, collector *privacyAuditCollector) ([]byte, map[string]string, int, bool, error) {
 	var root map[string]common.RawMessage
 	if err := common.Unmarshal(body, &root); err != nil {
 		return nil, nil, 0, false, err
@@ -189,7 +257,7 @@ func redactPrivacyJSONBody(body []byte, engine *privacy.Engine) ([]byte, map[str
 	blocked := false
 	changed := false
 	for key, raw := range root {
-		redacted, nodeChanged, nodeFindings, nodeBlocked := redactPrivacyValue(raw, isPrivacyTextKey(key), engine, replacements)
+		redacted, nodeChanged, nodeFindings, nodeBlocked := redactPrivacyValue(raw, isPrivacyTextKey(key), engine, collector, replacements)
 		if nodeChanged {
 			root[key] = redacted
 			changed = true
@@ -207,7 +275,7 @@ func redactPrivacyJSONBody(body []byte, engine *privacy.Engine) ([]byte, map[str
 	return redactedBody, replacements, findings, blocked, nil
 }
 
-func redactPrivacyValue(raw common.RawMessage, allowText bool, engine *privacy.Engine, replacements map[string]string) (common.RawMessage, bool, int, bool) {
+func redactPrivacyValue(raw common.RawMessage, allowText bool, engine *privacy.Engine, collector *privacyAuditCollector, replacements map[string]string) (common.RawMessage, bool, int, bool) {
 	switch common.GetJsonType(raw) {
 	case "string":
 		if !allowText {
@@ -222,6 +290,7 @@ func redactPrivacyValue(raw common.RawMessage, allowText bool, engine *privacy.E
 			return raw, false, 0, false
 		}
 		result := engine.RedactText(value)
+		collector.add(result.Findings)
 		for placeholder, original := range result.Replacements {
 			replacements[placeholder] = original
 		}
@@ -249,7 +318,7 @@ func redactPrivacyValue(raw common.RawMessage, allowText bool, engine *privacy.E
 			if allowText && common.GetJsonType(item) == "string" {
 				itemAllowance = true
 			}
-			redacted, itemChanged, itemFindings, itemBlocked := redactPrivacyValue(item, itemAllowance, engine, replacements)
+			redacted, itemChanged, itemFindings, itemBlocked := redactPrivacyValue(item, itemAllowance, engine, collector, replacements)
 			if itemChanged {
 				items[index] = redacted
 				changed = true
@@ -274,7 +343,7 @@ func redactPrivacyValue(raw common.RawMessage, allowText bool, engine *privacy.E
 		blocked := false
 		changed := false
 		for key, field := range fields {
-			redacted, fieldChanged, fieldFindings, fieldBlocked := redactPrivacyValue(field, isPrivacyTextKey(key), engine, replacements)
+			redacted, fieldChanged, fieldFindings, fieldBlocked := redactPrivacyValue(field, isPrivacyTextKey(key), engine, collector, replacements)
 			if fieldChanged {
 				fields[key] = redacted
 				changed = true

@@ -357,6 +357,8 @@ func migrateDB() error {
 		&QuotaData{},
 		&QuotaWindowUsage{},
 		&QuotaWindowLimit{},
+		&PrivacyAuditEvent{},
+		&PrivacyAuditFinding{},
 		&Task{},
 		&TaskPlugin{},
 		&Model{},

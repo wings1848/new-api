@@ -7,13 +7,17 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/i18n"
+	"github.com/QuantumNous/new-api/model"
 	"github.com/gin-gonic/gin"
+	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 const privacyInboundTestKey = "sk-proj-abcdefghijklmnopqrstuvwxyz0123456789"
@@ -168,3 +172,44 @@ func TestPrivacyInboundPolicyOverride(t *testing.T) {
 }
 
 var _ = strings.Contains
+
+func TestPrivacyInboundRecordsAuditEvent(t *testing.T) {
+	setupPrivacyInboundTest(t, "warn", "")
+	previousDB := model.DB
+	database, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	sqlDB, err := database.DB()
+	require.NoError(t, err)
+	sqlDB.SetMaxOpenConns(1)
+	require.NoError(t, database.AutoMigrate(&model.PrivacyAuditEvent{}, &model.PrivacyAuditFinding{}))
+	model.DB = database
+	t.Cleanup(func() { model.DB = previousDB })
+
+	body := `{"messages":[{"role":"user","content":"key ` + privacyInboundTestKey + `"}]}`
+	recorder, _, _, nextCalled := runPrivacyInbound(t, "/v1/chat/completions", "application/json", body)
+	require.Equal(t, http.StatusOK, recorder.Code)
+	assert.True(t, nextCalled)
+
+	require.Eventually(t, func() bool {
+		var count int64
+		if err := database.Model(&model.PrivacyAuditEvent{}).Count(&count).Error; err != nil {
+			return false
+		}
+		return count > 0
+	}, 2*time.Second, 20*time.Millisecond)
+
+	var event model.PrivacyAuditEvent
+	require.NoError(t, database.First(&event).Error)
+	assert.Equal(t, "warn", event.Mode)
+	assert.Equal(t, "/v1/chat/completions", event.Path)
+	assert.Positive(t, event.FindingCount)
+	var findings []model.PrivacyAuditFinding
+	require.NoError(t, database.Find(&findings).Error)
+	require.NotEmpty(t, findings)
+	assert.Equal(t, "api_key", findings[0].Type)
+	// The audit table must never contain the original value.
+	assert.NotContains(t, event.Username+event.Path+event.RequestId+event.Mode, privacyInboundTestKey)
+	for _, finding := range findings {
+		assert.NotContains(t, finding.RuleId+finding.Type+finding.Action, privacyInboundTestKey)
+	}
+}
