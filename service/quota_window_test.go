@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
+	relaykitdto "github.com/QuantumNous/new-api/relaykit/dto"
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
@@ -176,7 +179,7 @@ func TestQuotaWindowRecordFailureDoesNotPanic(t *testing.T) {
 	model.DB = nil
 	t.Cleanup(func() { model.DB = previousDB })
 	assert.NotPanics(t, func() {
-		recordUserQuotaWindowUsage(1, 100)
+		recordUserQuotaWindowUsage(1, "default", 100, false)
 	})
 }
 
@@ -227,4 +230,68 @@ func runQuotaWindowDBMatrix(t *testing.T) {
 	assert.EqualValues(t, 700, model.GetQuotaWindowLimit(99, "default", model.QuotaWindowKind5h))
 	require.NoError(t, model.SetQuotaWindowLimit(model.QuotaWindowScopeUser, "99", model.QuotaWindowKind5h, 70))
 	assert.EqualValues(t, 70, model.GetQuotaWindowLimit(99, "default", model.QuotaWindowKind5h))
+}
+
+func installQuotaWindowWarningRecorder(t *testing.T) *atomic.Int64 {
+	t.Helper()
+	previousQuotaRemind := common.QuotaRemindEnabled
+	common.QuotaRemindEnabled = true
+	var notifications atomic.Int64
+	previousNotify := quotaWindowNotify
+	quotaWindowNotify = func(userId int, email string, setting relaykitdto.UserSetting, data relaykitdto.Notify) error {
+		notifications.Add(1)
+		return nil
+	}
+	t.Cleanup(func() {
+		quotaWindowNotify = previousNotify
+		common.QuotaRemindEnabled = previousQuotaRemind
+	})
+	return &notifications
+}
+
+func TestQuotaWindowWarningFiresOnceWhenCrossingThreshold(t *testing.T) {
+	resetQuotaWindowTables(t)
+	user := newUnlimitedTestUser(t, 100000, false)
+	require.NoError(t, model.SetQuotaWindowLimit(model.QuotaWindowScopeGlobal, "", model.QuotaWindowKind5h, 100))
+	notifications := installQuotaWindowWarningRecorder(t)
+
+	recordUserQuotaWindowUsage(user.Id, "default", 70, false)
+	require.Never(t, func() bool { return notifications.Load() > 0 }, 150*time.Millisecond, 10*time.Millisecond)
+
+	recordUserQuotaWindowUsage(user.Id, "default", 15, false) // 85/100 crosses 80%
+	require.Eventually(t, func() bool { return notifications.Load() == 1 }, 2*time.Second, 10*time.Millisecond)
+
+	recordUserQuotaWindowUsage(user.Id, "default", 5, false) // still above, no new crossing
+	require.Never(t, func() bool { return notifications.Load() > 1 }, 150*time.Millisecond, 10*time.Millisecond)
+}
+
+func TestQuotaWindowWarningSkipsMissingLimitUnlimitedAndDisabled(t *testing.T) {
+	notifications := installQuotaWindowWarningRecorder(t)
+
+	// No limit configured: nothing to warn about.
+	resetQuotaWindowTables(t)
+	user := newUnlimitedTestUser(t, 100000, false)
+	recordUserQuotaWindowUsage(user.Id, "default", 500, false)
+	require.Never(t, func() bool { return notifications.Load() > 0 }, 150*time.Millisecond, 10*time.Millisecond)
+
+	// Explicit unlimited-quota user.
+	require.NoError(t, model.SetQuotaWindowLimit(model.QuotaWindowScopeGlobal, "", model.QuotaWindowKind5h, 100))
+	recordUserQuotaWindowUsage(user.Id, "default", 90, true)
+	require.Never(t, func() bool { return notifications.Load() > 0 }, 150*time.Millisecond, 10*time.Millisecond)
+
+	// User turned quota warnings off.
+	require.NoError(t, model.UpdateUserSetting(user.Id, relaykitdto.UserSetting{QuotaWarningEnabled: common.GetPointer(false)}))
+	recordUserQuotaWindowUsage(user.Id, "default", 90, false)
+	require.Never(t, func() bool { return notifications.Load() > 0 }, 150*time.Millisecond, 10*time.Millisecond)
+}
+
+func TestQuotaWindowWarningDeduplicatesWithRedis(t *testing.T) {
+	useUnlimitedTestMiniRedis(t)
+	now := time.Now()
+	windowStart := QuotaWindowStart(model.QuotaWindowKind5h, now)
+	resetAt := QuotaWindowResetAt(model.QuotaWindowKind5h, now)
+
+	assert.True(t, quotaWindowWarningAllowed(42, model.QuotaWindowKind5h, windowStart, resetAt, now))
+	assert.False(t, quotaWindowWarningAllowed(42, model.QuotaWindowKind5h, windowStart, resetAt, now))
+	assert.True(t, quotaWindowWarningAllowed(42, model.QuotaWindowKind7d, windowStart, resetAt, now))
 }
