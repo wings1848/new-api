@@ -23,6 +23,8 @@ import type { UsageLog } from './data/schema'
 import { buildQueryParams } from './lib/query-params'
 import { parseTaskArtifactsResponse } from './lib/task-artifacts'
 import type {
+  UsageWindowReport,
+  UsageWindowSummary,
   GetLogsParams,
   GetLogsResponse,
   GetLogStatsParams,
@@ -180,4 +182,33 @@ export async function getTaskArtifacts(taskId: string) {
     taskArtifactRequestConfig
   )
   return parseTaskArtifactsResponse(response.data)
+}
+
+// ============================================================================
+// Window-dimension usage APIs (issue #31)
+// ============================================================================
+
+export async function getUsageWindowSummary(): Promise<UsageWindowSummary> {
+  const res = await api.get('/api/usage-window/summary')
+  if (!res.data?.success) {
+    throw createServerError(res.data)
+  }
+  return res.data.data as UsageWindowSummary
+}
+
+export async function getUsageWindowReport(params: {
+  window: string
+  groupBy: string
+  days: number
+}): Promise<UsageWindowReport> {
+  const query = new URLSearchParams({
+    window: params.window,
+    group_by: params.groupBy,
+    days: String(params.days),
+  })
+  const res = await api.get(`/api/usage-window/report?${query.toString()}`)
+  if (!res.data?.success) {
+    throw createServerError(res.data)
+  }
+  return res.data.data as UsageWindowReport
 }

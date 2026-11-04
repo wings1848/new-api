@@ -530,3 +530,38 @@ export interface UserInfo {
   aff_quota?: number
   remark?: string
 }
+
+export interface UsageWindowSummaryWindow {
+  kind: string
+  limit: number
+  used: number
+  remaining: number
+  reset_at: number
+  source: string
+  estimated_exhaust_seconds: number
+}
+
+export interface UsageWindowSummary {
+  windows: UsageWindowSummaryWindow[]
+  server_time: number
+}
+
+export interface UsageWindowReportRow {
+  key: string
+  window_start: number
+  window_end: number
+  quota: number
+  requests: number
+  prompt_tokens: number
+  completion_tokens: number
+}
+
+export interface UsageWindowReport {
+  window: string
+  group_by: string
+  days: number
+  total_quota: number
+  total_requests: number
+  rows: UsageWindowReportRow[]
+  generated_at: number
+}
