@@ -1097,6 +1097,10 @@ func ManageUser(c *gin.Context) {
 		common.ApiErrorT(c, "Invalid parameters")
 		return
 	}
+	if req.Action == "set_unlimited_quota" {
+		manageUserUnlimitedQuota(c, req)
+		return
+	}
 	if req.Action == "add_quota" {
 		manageUserQuota(c, req)
 		return
@@ -1235,6 +1239,38 @@ func ManageUser(c *gin.Context) {
 		"data":    clearUser,
 	})
 	return
+}
+
+// manageUserUnlimitedQuota toggles the admin-managed user-level unlimited quota
+// flag. Both directions use an explicit column update: a GORM struct update
+// skips the false zero value and would silently ignore "disable".
+func manageUserUnlimitedQuota(c *gin.Context, req ManageRequest) {
+	user := model.User{Id: req.Id}
+	model.DB.Unscoped().Where(&user).First(&user)
+	if user.Id == 0 {
+		common.ApiErrorT(c, "User does not exist")
+		return
+	}
+	if !canManageTargetRole(c.GetInt("role"), user.Role) {
+		common.ApiErrorT(c, "No permission to update users of same or higher permission level")
+		return
+	}
+	enabled := req.Value != 0
+	if err := model.SetUserUnlimitedQuota(user.Id, enabled); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	recordManageAuditFor(c, user.Id, "user.manage", map[string]any{
+		"action":          req.Action,
+		"username":        user.Username,
+		"id":              user.Id,
+		"unlimited_quota": enabled,
+	})
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    gin.H{"unlimited_quota": enabled},
+	})
 }
 
 type topUpRequest struct {

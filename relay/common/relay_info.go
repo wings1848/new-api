@@ -123,8 +123,11 @@ type RelayInfo struct {
 	UserSetting         dto.UserSetting
 	UserEmail           string
 	UserQuota           int
-	RelayFormat         types.RelayFormat
-	SendResponseCount   int
+	// UserUnlimited marks a user exempt from wallet and token quota charges
+	// (admin-managed, issue #4); requests and usage are still counted.
+	UserUnlimited     bool
+	RelayFormat       types.RelayFormat
+	SendResponseCount int
 	// ClaudeToChatStreamState / ChatToGeminiStreamState hold per-attempt
 	// stream converters. InitChannelMeta nils them so a retry cannot resume a
 	// dirty converter (advanced tool index / finalized).
@@ -618,12 +621,13 @@ func genBaseRelayInfo(c *gin.Context, request dto.Request) *RelayInfo {
 		Request:         request,
 		ReasoningEffort: reasoningEffort,
 
-		RequestId:  reqId,
-		UserId:     common.GetContextKeyInt(c, constant.ContextKeyUserId),
-		UsingGroup: common.GetContextKeyString(c, constant.ContextKeyUsingGroup),
-		UserGroup:  common.GetContextKeyString(c, constant.ContextKeyUserGroup),
-		UserQuota:  common.GetContextKeyInt(c, constant.ContextKeyUserQuota),
-		UserEmail:  common.GetContextKeyString(c, constant.ContextKeyUserEmail),
+		RequestId:     reqId,
+		UserId:        common.GetContextKeyInt(c, constant.ContextKeyUserId),
+		UsingGroup:    common.GetContextKeyString(c, constant.ContextKeyUsingGroup),
+		UserGroup:     common.GetContextKeyString(c, constant.ContextKeyUserGroup),
+		UserQuota:     common.GetContextKeyInt(c, constant.ContextKeyUserQuota),
+		UserUnlimited: common.GetContextKeyBool(c, constant.ContextKeyUserUnlimitedQuota),
+		UserEmail:     common.GetContextKeyString(c, constant.ContextKeyUserEmail),
 
 		OriginModelName: originModelName,
 
