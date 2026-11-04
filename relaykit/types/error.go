@@ -83,6 +83,7 @@ const (
 	ErrorCodeUpdateDataError ErrorCode = "update_data_error"
 
 	// quota error
+	ErrorCodeQuotaWindowExceeded        ErrorCode = "quota_window_exceeded"
 	ErrorCodeInsufficientUserQuota      ErrorCode = "insufficient_user_quota"
 	ErrorCodePreConsumeTokenQuotaFailed ErrorCode = "pre_consume_token_quota_failed"
 )
