@@ -99,6 +99,21 @@ func RecordAuditLog(c *gin.Context, entry AuditLog) {
 	if entry.EventId == "" {
 		entry.EventId = common.NewRequestId()
 	}
+	if logPrivacyRedactionEnabled() {
+		// Audit rows are logs too: mask values in the rendered content and in
+		// the structured params/other payload before they reach the log database
+		// (SQL or ClickHouse).
+		entry.Content = sanitizeLogText(entry.Content)
+		if encoded, err := common.Marshal(entry.Other); err == nil {
+			masked := sanitizeLogText(string(encoded))
+			if masked != string(encoded) {
+				var maskedOther AuditOther
+				if unmarshalErr := common.Unmarshal([]byte(masked), &maskedOther); unmarshalErr == nil {
+					entry.Other = maskedOther
+				}
+			}
+		}
+	}
 	switch entry.ActorRole {
 	case common.RoleCommonUser, common.RoleAdminUser, common.RoleRootUser:
 	default:
