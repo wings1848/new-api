@@ -470,8 +470,13 @@ func setupTaskSubmissionDatabase(t *testing.T, migrate bool, events *[]string) *
 		models = append(models, &model.Task{})
 	}
 	database, _ := openTaskDialectDatabase(t, models...)
-	require.NoError(t, database.Callback().Create().Before("gorm:create").Register("test:task-submit-order", func(*gorm.DB) {
-		*events = append(*events, "insert")
+	// Only task INSERTs belong to the reserve → insert → settle contract; other
+	// side-channel writes on the same test database (quota window usage, logs)
+	// must not be counted.
+	require.NoError(t, database.Callback().Create().Before("gorm:create").Register("test:task-submit-order", func(tx *gorm.DB) {
+		if tx.Statement != nil && tx.Statement.Schema != nil && tx.Statement.Schema.Name == "Task" {
+			*events = append(*events, "insert")
+		}
 	}))
 	model.DB = database
 	t.Cleanup(func() { model.DB = previousDB })

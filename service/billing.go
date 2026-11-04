@@ -91,6 +91,7 @@ func SettleBilling(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, actualQuo
 		if err := relayInfo.Billing.Settle(actualQuota); err != nil {
 			return err
 		}
+		recordQuotaWindowUsageFromRelay(relayInfo, actualQuota)
 
 		// 发送额度通知（订阅计费使用订阅剩余额度；无限额度用户余额不动，不提醒）
 		if actualQuota != 0 && !relayInfo.UserUnlimited {
