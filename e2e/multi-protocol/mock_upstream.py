@@ -36,7 +36,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-cache")
-        self.send_header("Connection", "keep-alive")
+        self.send_header("Connection", "close")
+        self.close_connection = True
         self.end_headers()
         for chunk in chunks:
             self.wfile.write(chunk.encode())
@@ -67,7 +68,11 @@ class Handler(BaseHTTPRequestHandler):
         return self._json(404, {"error": {"message": f"no mock for {path}"}})
 
     def _chat(self, payload):
-        if payload.get("tools"):
+        has_tool_result = any(
+            isinstance(message, dict) and message.get("role") == "tool"
+            for message in payload.get("messages") or []
+        )
+        if payload.get("tools") and not has_tool_result:
             tool_calls = [{"id": "call_mock", "type": "function",
                            "function": {"name": "get_weather", "arguments": "{\"city\":\"Shenzhen\"}"}}]
             if payload.get("stream"):
@@ -89,6 +94,31 @@ class Handler(BaseHTTPRequestHandler):
                                 "choices": [{"index": 0, "message": {"role": "assistant", "content": "pong"}, "finish_reason": "stop"}]})
 
     def _responses(self, payload):
+        if payload.get("stream"):
+            response = {"id": "resp_mock", "object": "response", "created_at": int(time.time()),
+                        "status": "in_progress", "model": "mock-gpt", "output": []}
+            events = [
+                ("response.created", {"type": "response.created", "response": response}),
+                ("response.output_item.added", {"type": "response.output_item.added", "output_index": 0,
+                                                "item": {"id": "msg_mock", "type": "message", "role": "assistant",
+                                                         "status": "in_progress", "content": []}}),
+                ("response.content_part.added", {"type": "response.content_part.added", "item_id": "msg_mock",
+                                                 "output_index": 0, "content_index": 0,
+                                                 "part": {"type": "output_text", "text": "", "annotations": []}}),
+                ("response.output_text.delta", {"type": "response.output_text.delta", "item_id": "msg_mock",
+                                                "output_index": 0, "content_index": 0, "delta": "po"}),
+                ("response.output_text.delta", {"type": "response.output_text.delta", "item_id": "msg_mock",
+                                                "output_index": 0, "content_index": 0, "delta": "ng"}),
+                ("response.output_text.done", {"type": "response.output_text.done", "item_id": "msg_mock",
+                                               "output_index": 0, "content_index": 0, "text": "pong"}),
+                ("response.completed", {"type": "response.completed", "response": {
+                    "id": "resp_mock", "object": "response", "created_at": int(time.time()),
+                    "status": "completed", "model": "mock-gpt",
+                    "output": [{"id": "msg_mock", "type": "message", "role": "assistant", "status": "completed",
+                                "content": [{"type": "output_text", "text": "pong", "annotations": []}]}],
+                    "usage": {"input_tokens": 5, "output_tokens": 2, "total_tokens": 7}}}),
+            ]
+            return self._sse([f"event: {name}\ndata: {json.dumps(data)}\n\n" for name, data in events])
         return self._json(200, {"id": "resp_mock", "object": "response", "created_at": int(time.time()),
                                 "status": "completed", "model": "mock-gpt",
                                 "output": [{"type": "message", "id": "msg_mock", "role": "assistant",
@@ -97,6 +127,24 @@ class Handler(BaseHTTPRequestHandler):
                                 "usage": {"input_tokens": 5, "output_tokens": 2, "total_tokens": 7}})
 
     def _anthropic(self, payload):
+        if payload.get("stream"):
+            events = [
+                ("message_start", {"type": "message_start", "message": {
+                    "id": "msg_mock", "type": "message", "role": "assistant", "model": "mock-claude",
+                    "content": [], "stop_reason": None, "stop_sequence": None,
+                    "usage": {"input_tokens": 5, "output_tokens": 1}}}),
+                ("content_block_start", {"type": "content_block_start", "index": 0,
+                                         "content_block": {"type": "text", "text": ""}}),
+                ("content_block_delta", {"type": "content_block_delta", "index": 0,
+                                         "delta": {"type": "text_delta", "text": "po"}}),
+                ("content_block_delta", {"type": "content_block_delta", "index": 0,
+                                         "delta": {"type": "text_delta", "text": "ng"}}),
+                ("content_block_stop", {"type": "content_block_stop", "index": 0}),
+                ("message_delta", {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_sequence": None},
+                                   "usage": {"output_tokens": 2}}),
+                ("message_stop", {"type": "message_stop"}),
+            ]
+            return self._sse([f"event: {name}\ndata: {json.dumps(data)}\n\n" for name, data in events])
         return self._json(200, {"id": "msg_mock", "type": "message", "role": "assistant",
                                 "model": "mock-claude",
                                 "content": [{"type": "text", "text": "pong"}],
@@ -104,6 +152,14 @@ class Handler(BaseHTTPRequestHandler):
                                 "usage": {"input_tokens": 5, "output_tokens": 2}})
 
     def _gemini(self, payload):
+        if "streamGenerateContent" in self.path.split("?")[0]:
+            chunks = [
+                {"candidates": [{"content": {"parts": [{"text": "po"}], "role": "model"}, "index": 0}]},
+                {"candidates": [{"content": {"parts": [{"text": "ng"}], "role": "model"},
+                                  "finishReason": "STOP", "index": 0}],
+                 "usageMetadata": {"promptTokenCount": 5, "candidatesTokenCount": 2, "totalTokenCount": 7}},
+            ]
+            return self._sse([f"data: {json.dumps(chunk)}\n\n" for chunk in chunks])
         return self._json(200, {"candidates": [{"content": {"parts": [{"text": "pong"}], "role": "model"},
                                                 "finishReason": "STOP", "index": 0}],
                                 "usageMetadata": {"promptTokenCount": 5, "candidatesTokenCount": 2, "totalTokenCount": 7}})
