@@ -47,7 +47,7 @@
 |---|---|---|
 | `QUOTA_WINDOW_OBSERVE_ONLY` | true | 窗口预检只记录不拦截；关掉才真正 429 |
 | `QUOTA_WINDOW_WARNING_PERCENT` | 80 | 窗口预警阈值 |
-| `PRIVACY_INBOUND_MODE` | off | off/warn/redact/block 入站脱敏模式 |
+| `PRIVACY_INBOUND_MODE` | **warn** | off/warn/redact/block；默认只观测不拦截（用户确认） |
 | `PRIVACY_POLICY_JSON` | 空 | JSON 策略覆盖（规则/白名单/Suppression） |
 | `PRIVACY_INBOUND_FAIL_CLOSED` | false | 解析失败时 503 而非放行 |
 | `PRIVACY_LOG_MODE` | off | off/warn/redact 日志脱敏 |
@@ -61,7 +61,7 @@
 | `ABUSE_TOKEN_IP_MAX_TOKENS` | 5 | 同用户+IP 多 token 阈值 |
 | `ABUSE_ALERT_COOLDOWN_SECONDS` | 300 | 告警冷却 |
 
-> 灰度顺序建议：先开观察/告警类（窗口观察、隐私 warn、异常检测），观察一周后再开拦截类（窗口拦截、隐私 redact、并发上限）。
+> 灰度顺序建议：隐私默认已开 `warn` 观测；其余先开观察/告警类（窗口观察、异常检测），观察一周后再开拦截类（窗口拦截、隐私 redact、并发上限）。
 
 ## 4. 验证证据索引
 
@@ -75,7 +75,7 @@
 
 ## 5. 已知限制 / 待办
 
-1. **#3 待你拍板 3 个点**：缓存 token 是否计入窗口；脱敏是否默认开 `warn`；AGPL 路线 A 是否长期成立。默认实现见 `decision-record-3.md`。
+1. **#3 已确认（2026-11-05）**：缓存 token 计入窗口；脱敏默认 `warn`；保持 AGPL 全开源。记录见 `decision-record-3.md`。
 2. 隐私：本地模型 detector 不做；WebSocket 消息未做还原；未知路径回退旧扫描逻辑。
 3. 并发/异常检测默认关闭；单 key 渠道额度耗尽仍走原自动禁用（未做休息）。
 4. 报表：套餐维度需 join `user_subscriptions`（未做）；日志聚合在 Go 侧完成，超大日志量需后续优化。

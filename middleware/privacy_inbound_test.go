@@ -246,3 +246,32 @@ func TestPrivacyInboundFailClosed(t *testing.T) {
 	assert.False(t, nextCalled)
 	assert.Contains(t, recorder.Body.String(), "privacy_fail_closed")
 }
+
+func TestPrivacyInboundDefaultWarn(t *testing.T) {
+	// No PRIVACY_INBOUND_MODE: the default is warn (observe only, never rewrite).
+	setupPrivacyInboundTest(t, "", "")
+	resetPrivacyInboundConfigForTest()
+	previousDB := model.DB
+	database, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	sqlDB, err := database.DB()
+	require.NoError(t, err)
+	sqlDB.SetMaxOpenConns(1)
+	require.NoError(t, database.AutoMigrate(&model.PrivacyAuditEvent{}, &model.PrivacyAuditFinding{}))
+	model.DB = database
+	t.Cleanup(func() { model.DB = previousDB })
+
+	body := `{"messages":[{"role":"user","content":"key ` + privacyInboundTestKey + `"}]}`
+	recorder, seen, _, nextCalled := runPrivacyInbound(t, "/v1/chat/completions", "application/json", body)
+	require.Equal(t, http.StatusOK, recorder.Code)
+	assert.True(t, nextCalled)
+	assert.Contains(t, seen, privacyInboundTestKey, "warn mode must not rewrite the body")
+	// warn still records an audit event; off would record nothing.
+	require.Eventually(t, func() bool {
+		var count int64
+		if err := database.Model(&model.PrivacyAuditEvent{}).Count(&count).Error; err != nil {
+			return false
+		}
+		return count > 0
+	}, 2*time.Second, 20*time.Millisecond)
+}
