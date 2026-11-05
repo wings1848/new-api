@@ -70,7 +70,26 @@ type ChannelInfo struct {
 	MultiKeyDisabledTime   map[int]int64         `json:"multi_key_disabled_time,omitempty"`   // key禁用时间列表，key index -> time
 	MultiKeyPollingIndex   int                   `json:"multi_key_polling_index"`             // 多Key模式下轮询的key索引
 	MultiKeyMode           constant.MultiKeyMode `json:"multi_key_mode"`
+	// Rest state for upstream quota exhaustion (issue #33): the key is skipped
+	// until MultiKeyRestUntil[index], then lazily restored.
+	MultiKeyRestUntil map[int]int64 `json:"multi_key_rest_until,omitempty"` // key index -> unix time to restore
+	MultiKeyRestLevel map[int]int   `json:"multi_key_rest_level,omitempty"` // key index -> next rest ladder level
 }
+
+// MultiKeyRestLadder is the backoff ladder used when an upstream key reports
+// quota exhaustion (issue #33), mirroring magpie's rest ladder.
+var MultiKeyRestLadder = []int64{
+	30 * 60,       // 30 minutes
+	2 * 3600,      // 2 hours
+	8 * 3600,      // 8 hours
+	24 * 3600,     // 1 day
+	3 * 24 * 3600, // 3 days
+	7 * 24 * 3600, // 7 days
+}
+
+// multiKeyRestEscalationWindow resets the ladder when a key has not failed for
+// a day, so a one-off provider hiccup does not rest it for a week.
+const multiKeyRestEscalationWindow int64 = 24 * 3600
 
 type ChannelSortOptions struct {
 	SortBy    string
@@ -225,6 +244,10 @@ func (channel *Channel) GetNextEnabledKey() (string, int, *types.NewAPIError) {
 	lock := GetChannelPollingLock(channel.Id)
 	lock.Lock()
 	defer lock.Unlock()
+
+	if channel.restoreExpiredKeysLocked(common.GetTimestamp()) {
+		_ = channel.saveStatusState()
+	}
 
 	statusList := channel.ChannelInfo.MultiKeyStatusList
 	// helper to get key status, default to enabled when missing
@@ -728,6 +751,109 @@ func handlerMultiKeyUpdate(channel *Channel, usingKey string, status int, reason
 			channel.Status = common.ChannelStatusEnabled
 		}
 	}
+}
+
+// RestChannelKey puts one key of a multi-key channel to rest after an upstream
+// quota-exhaustion error and returns the time it becomes usable again.
+func RestChannelKey(channelId int, usingKey string, reason string) (int64, bool, error) {
+	if channelId <= 0 || usingKey == "" {
+		return 0, false, nil
+	}
+	channel, err := GetChannelById(channelId, true)
+	if err != nil {
+		return 0, false, err
+	}
+	return channel.RestKey(usingKey, reason)
+}
+
+// RestKey marks one key as auto-disabled until the next rest ladder step.
+func (channel *Channel) RestKey(usingKey string, reason string) (int64, bool, error) {
+	if !channel.ChannelInfo.IsMultiKey {
+		return 0, false, nil
+	}
+	keys := channel.GetKeys()
+	keyIndex := -1
+	for index, key := range keys {
+		if key == usingKey {
+			keyIndex = index
+			break
+		}
+	}
+	if keyIndex < 0 {
+		return 0, false, nil
+	}
+	lock := GetChannelPollingLock(channel.Id)
+	lock.Lock()
+	defer lock.Unlock()
+	now := common.GetTimestamp()
+	channel.restoreExpiredKeysLocked(now)
+
+	level := channel.ChannelInfo.MultiKeyRestLevel[keyIndex]
+	if last, ok := channel.ChannelInfo.MultiKeyDisabledTime[keyIndex]; ok && last > 0 && now-last > multiKeyRestEscalationWindow {
+		level = 0
+	}
+	if level >= len(MultiKeyRestLadder) {
+		level = len(MultiKeyRestLadder) - 1
+	}
+	until := now + MultiKeyRestLadder[level]
+	nextLevel := level + 1
+	if nextLevel >= len(MultiKeyRestLadder) {
+		nextLevel = len(MultiKeyRestLadder) - 1
+	}
+
+	if channel.ChannelInfo.MultiKeyStatusList == nil {
+		channel.ChannelInfo.MultiKeyStatusList = make(map[int]int)
+	}
+	if channel.ChannelInfo.MultiKeyDisabledReason == nil {
+		channel.ChannelInfo.MultiKeyDisabledReason = make(map[int]string)
+	}
+	if channel.ChannelInfo.MultiKeyDisabledTime == nil {
+		channel.ChannelInfo.MultiKeyDisabledTime = make(map[int]int64)
+	}
+	if channel.ChannelInfo.MultiKeyRestUntil == nil {
+		channel.ChannelInfo.MultiKeyRestUntil = make(map[int]int64)
+	}
+	if channel.ChannelInfo.MultiKeyRestLevel == nil {
+		channel.ChannelInfo.MultiKeyRestLevel = make(map[int]int)
+	}
+	channel.ChannelInfo.MultiKeyStatusList[keyIndex] = common.ChannelStatusAutoDisabled
+	channel.ChannelInfo.MultiKeyDisabledReason[keyIndex] = reason
+	channel.ChannelInfo.MultiKeyDisabledTime[keyIndex] = now
+	channel.ChannelInfo.MultiKeyRestUntil[keyIndex] = until
+	channel.ChannelInfo.MultiKeyRestLevel[keyIndex] = nextLevel
+	if err := channel.saveStatusState(); err != nil {
+		return 0, false, err
+	}
+	return until, true, nil
+}
+
+// restoreExpiredKeys re-enables every key whose rest period has passed and
+// reports whether anything changed.
+func (channel *Channel) restoreExpiredKeys(now int64) bool {
+	lock := GetChannelPollingLock(channel.Id)
+	lock.Lock()
+	defer lock.Unlock()
+	if !channel.restoreExpiredKeysLocked(now) {
+		return false
+	}
+	_ = channel.saveStatusState()
+	return true
+}
+
+func (channel *Channel) restoreExpiredKeysLocked(now int64) bool {
+	changed := false
+	for keyIndex, until := range channel.ChannelInfo.MultiKeyRestUntil {
+		if until <= 0 || until > now {
+			continue
+		}
+		delete(channel.ChannelInfo.MultiKeyRestUntil, keyIndex)
+		delete(channel.ChannelInfo.MultiKeyDisabledReason, keyIndex)
+		if channel.ChannelInfo.MultiKeyStatusList != nil {
+			delete(channel.ChannelInfo.MultiKeyStatusList, keyIndex)
+		}
+		changed = true
+	}
+	return changed
 }
 
 func hasEnabledMultiKey(keys []string, statusList map[int]int) bool {
