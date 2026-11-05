@@ -1,3 +1,4 @@
+import { BarChart3, Eye, EyeOff } from 'lucide-react'
 /*
 Copyright (C) 2023-2026 QuantumNous
 
@@ -16,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Eye, EyeOff } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
@@ -25,9 +26,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { ROLE } from '@/lib/roles'
+import { useAuthStore } from '@/stores/auth-store'
 
 import { CommonLogsStats } from './common-logs-stats'
 import { useUsageLogsContext } from './usage-logs-provider'
+import { UsageWindowReportDialog } from './usage-window-report-dialog'
 
 /**
  * Page-header actions for the Common Logs view: live usage stats plus a
@@ -39,10 +43,29 @@ import { useUsageLogsContext } from './usage-logs-provider'
 export function CommonLogsHeaderActions() {
   const { t } = useTranslation()
   const { sensitiveVisible, setSensitiveVisible } = useUsageLogsContext()
+  const currentUser = useAuthStore((state) => state.auth.user)
+  const [windowReportOpen, setWindowReportOpen] = useState(false)
+  const canViewWindowReport = (currentUser?.role ?? 0) >= ROLE.ADMIN
 
   return (
     <div className='flex flex-wrap items-center gap-2'>
       <CommonLogsStats />
+      {canViewWindowReport && (
+        <>
+          <Button
+            onClick={() => setWindowReportOpen(true)}
+            size='sm'
+            variant='outline'
+          >
+            <BarChart3 className='mr-1 size-4' />
+            {t('Window Report')}
+          </Button>
+          <UsageWindowReportDialog
+            open={windowReportOpen}
+            onOpenChange={setWindowReportOpen}
+          />
+        </>
+      )}
       <Tooltip>
         <TooltipTrigger
           render={

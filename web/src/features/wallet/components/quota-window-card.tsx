@@ -1,14 +1,16 @@
+import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { Gauge } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
 import { IconBadge } from '@/components/ui/icon-badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { getUsageWindowSummary } from '@/features/usage-logs/api'
+import { exhaustEtaLabel } from '@/features/usage-logs/lib/window-usage'
+import type { QuotaWindowOverview } from '@/features/users/types'
 import { formatQuota } from '@/lib/format'
 import { requireServerSuccess } from '@/lib/server-error-message'
 
-import type { QuotaWindowOverview } from '@/features/users/types'
 import { getQuotaWindowSelf } from '../api'
 
 function windowLabel(kind: string, t: (key: string) => string): string {
@@ -29,6 +31,14 @@ export function QuotaWindowCard() {
     },
     staleTime: 30 * 1000,
   })
+  const { data: summary } = useQuery({
+    queryKey: ['usage-window-summary'],
+    queryFn: () => getUsageWindowSummary(),
+    staleTime: 30 * 1000,
+  })
+  const summaryByKind = new Map(
+    (summary?.windows ?? []).map((window) => [window.kind, window])
+  )
 
   if (isLoading) {
     return (
@@ -73,6 +83,28 @@ export function QuotaWindowCard() {
               <span>{t('Resets at')}</span>
               <span>{dayjs.unix(window.reset_at).format('MM-DD HH:mm')}</span>
             </div>
+            {(() => {
+              const stat = summaryByKind.get(window.kind)
+              if (!stat || stat.limit <= 0) {
+                return null
+              }
+              if (stat.used >= stat.limit) {
+                return (
+                  <div className='text-destructive mt-1 text-xs font-medium'>
+                    {t('Limit reached')}
+                  </div>
+                )
+              }
+              const eta = exhaustEtaLabel(stat.estimated_exhaust_seconds)
+              if (!eta) {
+                return null
+              }
+              return (
+                <div className='text-muted-foreground mt-1 text-xs'>
+                  {t('Estimated limit in {{duration}}', { duration: eta })}
+                </div>
+              )
+            })()}
           </div>
         ))}
       </div>
