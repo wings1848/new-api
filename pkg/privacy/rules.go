@@ -65,6 +65,15 @@ func DefaultPolicy() Policy {
 				Action:  ActionWarn,
 				Builtin: true,
 			},
+			{
+				// IBAN: two country letters, two checksum digits, then 11-30
+				// alphanumerics; the checksum (mod 97) filters false positives.
+				ID:      "iban",
+				Type:    "iban",
+				Pattern: `\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b`,
+				Action:  ActionWarn,
+				Builtin: true,
+			},
 		},
 	}
 }
@@ -167,6 +176,8 @@ func builtinPrefilter(ruleID string) func(string) bool {
 		return func(text string) bool { return hasDigitRun(text, 17) }
 	case "bank-card":
 		return mayContainBankCard
+	case "iban":
+		return hasIBANShape
 	default:
 		return nil
 	}
@@ -219,4 +230,37 @@ func mayContainBankCard(text string) bool {
 		}
 	}
 	return false
+}
+
+// hasIBANShape cheaply rejects text without a country code + checksum prefix.
+func hasIBANShape(text string) bool {
+	for index := 0; index+4 <= len(text); index++ {
+		if text[index] >= 'A' && text[index] <= 'Z' &&
+			text[index+1] >= 'A' && text[index+1] <= 'Z' &&
+			text[index+2] >= '0' && text[index+2] <= '9' &&
+			text[index+3] >= '0' && text[index+3] <= '9' {
+			return true
+		}
+	}
+	return false
+}
+
+// validIBAN checks the ISO 13616 mod-97 checksum.
+func validIBAN(value string) bool {
+	if len(value) < 15 || len(value) > 34 {
+		return false
+	}
+	rearranged := value[4:] + value[:4]
+	remainder := 0
+	for _, char := range rearranged {
+		switch {
+		case char >= '0' && char <= '9':
+			remainder = (remainder*10 + int(char-'0')) % 97
+		case char >= 'A' && char <= 'Z':
+			remainder = (remainder*100 + int(char-'A') + 10) % 97
+		default:
+			return false
+		}
+	}
+	return remainder == 1
 }

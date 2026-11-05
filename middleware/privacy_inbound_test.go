@@ -213,3 +213,36 @@ func TestPrivacyInboundRecordsAuditEvent(t *testing.T) {
 		assert.NotContains(t, finding.RuleId+finding.Type+finding.Action, privacyInboundTestKey)
 	}
 }
+
+func TestPrivacyInboundProtocolRoots(t *testing.T) {
+	setupPrivacyInboundTest(t, "redact", "")
+	// Chat: only messages/prompt are scanned; other protocols' root fields and
+	// unknown top-level fields are not.
+	body := `{"messages":[{"role":"user","content":"key ` + privacyInboundTestKey + `"}],"instructions":"key ` + privacyInboundTestKey + `","custom_field":"key ` + privacyInboundTestKey + `"}`
+	_, seen, _, nextCalled := runPrivacyInbound(t, "/v1/chat/completions", "application/json", body)
+	assert.True(t, nextCalled)
+	assert.Contains(t, seen, "{{WINGS_API_KEY_")
+	assert.Equal(t, 2, strings.Count(seen, privacyInboundTestKey), "only messages is scanned for chat")
+
+	// Responses: instructions/input are scanned.
+	responsesBody := `{"instructions":"key ` + privacyInboundTestKey + `","metadata":"key ` + privacyInboundTestKey + `"}`
+	_, seen, _, _ = runPrivacyInbound(t, "/v1/responses", "application/json", responsesBody)
+	assert.Equal(t, 1, strings.Count(seen, privacyInboundTestKey), "instructions masked, metadata untouched")
+}
+
+func TestPrivacyInboundSkipsContinuationFields(t *testing.T) {
+	setupPrivacyInboundTest(t, "redact", "")
+	body := `{"messages":[{"role":"assistant","content":[{"type":"thinking","thinking":"key ` + privacyInboundTestKey + `"},{"type":"text","text":"hello"}]}]}`
+	_, seen, _, _ := runPrivacyInbound(t, "/v1/messages", "application/json", body)
+	assert.Contains(t, seen, privacyInboundTestKey, "thinking/signature-like fields must not be rewritten")
+}
+
+func TestPrivacyInboundFailClosed(t *testing.T) {
+	setupPrivacyInboundTest(t, "redact", "")
+	t.Setenv("PRIVACY_INBOUND_FAIL_CLOSED", "true")
+	resetPrivacyInboundConfigForTest()
+	recorder, _, _, nextCalled := runPrivacyInbound(t, "/v1/chat/completions", "application/json", `{not json`)
+	assert.Equal(t, http.StatusServiceUnavailable, recorder.Code)
+	assert.False(t, nextCalled)
+	assert.Contains(t, recorder.Body.String(), "privacy_fail_closed")
+}

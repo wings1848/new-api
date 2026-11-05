@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -107,6 +108,61 @@ func isPrivacyTextKey(key string) bool {
 	return ok
 }
 
+// privacyProtocolRoots restricts scanning to each protocol's textual roots
+// (issue #36) instead of scanning every allowed key anywhere in the body.
+func privacyProtocolRoots(path string) ([]string, bool) {
+	switch {
+	case strings.HasPrefix(path, "/v1/chat/completions"), strings.HasPrefix(path, "/v1/completions"):
+		return []string{"messages", "prompt"}, true
+	case strings.HasPrefix(path, "/v1/responses"):
+		return []string{"instructions", "input", "prompt"}, true
+	case strings.HasPrefix(path, "/v1/messages"):
+		return []string{"system", "messages"}, true
+	case strings.HasPrefix(path, "/v1beta"):
+		return []string{"systemInstruction", "contents"}, true
+	default:
+		return nil, false
+	}
+}
+
+// privacySkipKeys are structured/continuation fields that must never be
+// rewritten: changing them breaks reasoning signatures, tool schemas or binary
+// payloads (AstrLink continuationPaths lesson).
+var privacySkipKeys = map[string]struct{}{
+	"signature":         {},
+	"encrypted_content": {},
+	"redacted_thinking": {},
+	"thinking":          {},
+	"metadata":          {},
+	"image_url":         {},
+	"data":              {},
+	"file":              {},
+	"audio":             {},
+	"url":               {},
+	"id":                {},
+	"model":             {},
+	"role":              {},
+	"type":              {},
+	"name":              {},
+	"tool_call_id":      {},
+	"tools":             {},
+	"functions":         {},
+	"tool_choice":       {},
+	"format":            {},
+	"mime_type":         {},
+}
+
+func isPrivacySkipKey(key string) bool {
+	_, skip := privacySkipKeys[key]
+	return skip
+}
+
+// privacyInboundFailClosed reports whether unparsable bodies must be rejected
+// instead of forwarded (issue #36, default off).
+func privacyInboundFailClosed() bool {
+	return common.GetEnvOrDefaultBool("PRIVACY_INBOUND_FAIL_CLOSED", false)
+}
+
 // PrivacyInbound masks sensitive values in relay JSON bodies according to
 // PRIVACY_INBOUND_MODE (off/warn/redact/block).
 func PrivacyInbound() gin.HandlerFunc {
@@ -147,9 +203,15 @@ func PrivacyInbound() gin.HandlerFunc {
 			c.Next()
 			return
 		}
+		roots, hasRoots := privacyProtocolRoots(c.Request.URL.Path)
 		collector := newPrivacyAuditCollector()
-		redacted, replacements, findings, blocked, err := redactPrivacyJSONBody(body, config.engine, collector)
+		redacted, replacements, findings, blocked, err := redactPrivacyJSONBody(body, config.engine, collector, roots, hasRoots)
 		if err != nil {
+			if privacyInboundFailClosed() {
+				logger.LogWarn(c, common.LogText("privacy fail-closed: cannot parse request body: %v", err))
+				abortWithOpenAiMessage(c, http.StatusServiceUnavailable, i18n.T(c, i18n.MsgPrivacyFailClosed), types.ErrorCodePrivacyFailClosed)
+				return
+			}
 			logger.LogWarn(c, common.LogText("privacy: cannot parse request body, passing it through: %v", err))
 			c.Next()
 			return
@@ -190,6 +252,11 @@ func PrivacyInbound() gin.HandlerFunc {
 		}
 		newStorage, err := common.CreateBodyStorage(redacted)
 		if err != nil {
+			if privacyInboundFailClosed() {
+				logger.LogWarn(c, common.LogText("privacy fail-closed: cannot rebuild request body: %v", err))
+				abortWithOpenAiMessage(c, http.StatusServiceUnavailable, i18n.T(c, i18n.MsgPrivacyFailClosed), types.ErrorCodePrivacyFailClosed)
+				return
+			}
 			logger.LogWarn(c, common.LogText("privacy: cannot rebuild body storage, passing the original body through: %v", err))
 			c.Next()
 			return
@@ -259,7 +326,7 @@ func (c *privacyAuditCollector) auditFindings() []model.PrivacyAuditFinding {
 
 // redactPrivacyJSONBody walks the top-level object and rewrites the textual
 // fields. Numbers, ids, tool declarations and binary payloads are preserved.
-func redactPrivacyJSONBody(body []byte, engine *privacy.Engine, collector *privacyAuditCollector) ([]byte, map[string]string, int, bool, error) {
+func redactPrivacyJSONBody(body []byte, engine *privacy.Engine, collector *privacyAuditCollector, roots []string, hasRoots bool) ([]byte, map[string]string, int, bool, error) {
 	var root map[string]common.RawMessage
 	if err := common.Unmarshal(body, &root); err != nil {
 		return nil, nil, 0, false, err
@@ -269,6 +336,9 @@ func redactPrivacyJSONBody(body []byte, engine *privacy.Engine, collector *priva
 	blocked := false
 	changed := false
 	for key, raw := range root {
+		if hasRoots && !slices.Contains(roots, key) {
+			continue
+		}
 		redacted, nodeChanged, nodeFindings, nodeBlocked := redactPrivacyValue(raw, isPrivacyTextKey(key), engine, collector, replacements)
 		if nodeChanged {
 			root[key] = redacted
@@ -355,6 +425,9 @@ func redactPrivacyValue(raw common.RawMessage, allowText bool, engine *privacy.E
 		blocked := false
 		changed := false
 		for key, field := range fields {
+			if isPrivacySkipKey(key) {
+				continue
+			}
 			redacted, fieldChanged, fieldFindings, fieldBlocked := redactPrivacyValue(field, isPrivacyTextKey(key), engine, collector, replacements)
 			if fieldChanged {
 				fields[key] = redacted

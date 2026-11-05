@@ -182,3 +182,52 @@ func benchmarkRedact(b *testing.B, text string) {
 		_ = engine.RedactText(text)
 	}
 }
+
+func TestNumericBoundary(t *testing.T) {
+	engine := newTestEngine(t, nil)
+	// A phone-number-shaped run inside a longer digit string is not a phone.
+	result := engine.RedactText("order 99113800138000123 end")
+	for _, finding := range result.Findings {
+		assert.NotEqual(t, "phone_cn", finding.Type)
+	}
+	// Standalone phones are still detected (covered by TestWarnsPersonalData).
+	standalone := engine.RedactText("call 13800138000 now")
+	found := false
+	for _, finding := range standalone.Findings {
+		if finding.Type == "phone_cn" {
+			found = true
+		}
+	}
+	assert.True(t, found)
+}
+
+func TestIBAN(t *testing.T) {
+	engine := newTestEngine(t, nil)
+	valid := engine.RedactText("iban GB82WEST12345698765432")
+	hasIBAN := false
+	for _, finding := range valid.Findings {
+		if finding.Type == "iban" {
+			hasIBAN = true
+			assert.Equal(t, "GB82WEST12345698765432", finding.Value)
+		}
+	}
+	assert.True(t, hasIBAN, "valid IBAN must be detected")
+
+	invalid := engine.RedactText("iban GB00WEST12345698765432")
+	for _, finding := range invalid.Findings {
+		assert.NotEqual(t, "iban", finding.Type, "invalid checksum must not be reported")
+	}
+}
+
+func TestSuppression(t *testing.T) {
+	engine := newTestEngine(t, func(policy *Policy) {
+		policy.Suppressions = []string{`@example\.com$`}
+	})
+	result := engine.RedactText("mail user@example.com and real@acme.cn")
+	values := make([]string, 0, len(result.Findings))
+	for _, finding := range result.Findings {
+		values = append(values, finding.Value)
+	}
+	assert.NotContains(t, values, "user@example.com")
+	assert.Contains(t, values, "real@acme.cn")
+}
