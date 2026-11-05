@@ -6,6 +6,7 @@ Gemini generateContent on one port. Model name decides error behaviour:
 mock-429 -> HTTP 429, mock-500 -> HTTP 500.
 """
 import json
+import os
 import sys
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -51,6 +52,9 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             payload = {}
         model = str(payload.get("model") or "")
+        if model == "mock-quota":
+            return self._json(429, {"error": {"message": "You exceeded your current quota, please check your plan and billing details.",
+                                              "type": "insufficient_quota", "code": "insufficient_quota"}})
         if model == "mock-429":
             return self._json(429, {"error": {"message": "upstream rate limited", "type": "rate_limit_error"}})
         if model == "mock-500":
@@ -167,4 +171,5 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 19090
-    ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
+    host = os.environ.get("MOCK_HOST", "127.0.0.1")
+    ThreadingHTTPServer((host, port), Handler).serve_forever()
