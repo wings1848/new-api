@@ -88,6 +88,10 @@ relay chat-image POST /v1/chat/completions '{"model":"mock-gpt","messages":[{"ro
 relay responses POST /v1/responses '{"model":"mock-gpt","input":"ping"}'
 relay anthropic POST /v1/messages '{"model":"mock-claude","max_tokens":16,"messages":[{"role":"user","content":"ping"}]}' -H 'anthropic-version: 2023-06-01'
 relay gemini POST "/v1beta/models/mock-gemini:generateContent?key=$KEY" '{"contents":[{"role":"user","parts":[{"text":"ping"}]}]}'
+relay responses-stream POST /v1/responses '{"model":"mock-gpt","input":"ping","stream":true}'
+relay anthropic-stream POST /v1/messages '{"model":"mock-claude","max_tokens":16,"messages":[{"role":"user","content":"ping"}],"stream":true}' -H 'anthropic-version: 2023-06-01'
+relay gemini-stream POST "/v1beta/models/mock-gemini:streamGenerateContent?key=$KEY" '{"contents":[{"role":"user","parts":[{"text":"ping"}]}]}'
+relay chat-tool-roundtrip POST /v1/chat/completions '{"model":"mock-gpt","messages":[{"role":"user","content":"weather?"},{"role":"assistant","content":null,"tool_calls":[{"id":"call_mock","type":"function","function":{"name":"get_weather","arguments":"{\"city\":\"Shenzhen\"}"}}]},{"role":"tool","tool_call_id":"call_mock","content":"sunny"}],"tools":[{"type":"function","function":{"name":"get_weather","parameters":{"type":"object","properties":{"city":{"type":"string"}}}}}]}'
 relay upstream-429 POST /v1/chat/completions '{"model":"mock-429","messages":[{"role":"user","content":"ping"}]}'
 relay upstream-500 POST /v1/chat/completions '{"model":"mock-500","messages":[{"role":"user","content":"ping"}]}'
 
@@ -110,6 +114,10 @@ code, body = load('chat-image'); checks.append(('openai chat image', code == 200
 code, body = load('responses'); checks.append(('openai responses', code == 200 and ('pong' in body or 'output' in body), code))
 code, body = load('anthropic'); checks.append(('anthropic messages', code == 200 and ('pong' in body or 'message' in body), code))
 code, body = load('gemini'); checks.append(('gemini generateContent', code == 200 and ('pong' in body or 'candidates' in body), code))
+code, body = load('responses-stream'); checks.append(('openai responses stream', code == 200 and 'response.output_text.delta' in body and 'po' in body and 'ng' in body, code))
+code, body = load('anthropic-stream'); checks.append(('anthropic stream', code == 200 and 'content_block_delta' in body and 'text_delta' in body, code))
+code, body = load('gemini-stream'); checks.append(('gemini stream', code == 200 and 'candidates' in body and 'po' in body and 'ng' in body, code))
+code, body = load('chat-tool-roundtrip'); checks.append(('tool result round-trip', code == 200 and 'pong' in body, code))
 code, body = load('upstream-429'); checks.append(('upstream 429 surfaced', 400 <= code < 500, code))
 code, body = load('upstream-500'); checks.append(('upstream 500 surfaced', code >= 400, code))
 fail = 0

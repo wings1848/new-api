@@ -4,7 +4,7 @@
 
 ## 1. 结论
 
-四个协议入口全部可用，验收 **9/9 通过**：
+四个协议入口全部可用，验收 **13/13 通过**（含三种协议的流式与工具结果回传）：
 
 | # | 协议 | 请求 | 结果 |
 |---|---|---|---|
@@ -17,6 +17,10 @@
 | 7 | Gemini | `POST /v1beta/models/{model}:generateContent?key=TOKEN` | ✅ 200，返回 `candidates` |
 | 8 | 错误透传 | 上游 429 | ✅ 客户端收到 429 + 上游错误体 |
 | 9 | 错误透传 | 上游 500 | ✅ 客户端收到 500 + 上游错误体 |
+| 10 | OpenAI Responses | `stream:true` | ✅ SSE `response.output_text.delta` 事件透传 |
+| 11 | Anthropic Messages | `stream:true` | ✅ SSE `content_block_delta`/`message_delta` 透传 |
+| 12 | Gemini | `:streamGenerateContent` | ✅ chunked JSON 分块透传 |
+| 13 | OpenAI Chat | 工具结果回传（`role:tool` 再请求） | ✅ 200，正常回复 |
 
 ## 2. 如何复现
 
@@ -44,13 +48,13 @@
 
 通用：网关按 **模型名** 路由到渠道，渠道 `models` 必须包含该模型；渠道 `group` 与用户/令牌分组需一致。
 
-## 4. 未覆盖项（已开 #38）
+## 4. 未覆盖项（手动清单）
 
-- OpenAI Responses / Anthropic / Gemini 的**流式**变体
-- 工具**结果回传**（`role:tool` / `function_call_output` 再请求）
-- 4xx 参数错误 vs 上游 5xx vs 429 的细分断言
-- 真实厂商 key 回归（reasoning 字段、缓存 token 计费）
+- 4xx 参数错误（网关自身校验）与上游错误的细分断言
+- **真实厂商 key 回归**（reasoning 字段、缓存 token 计费）——发布前手动执行一次
+- 多模态图片的真实上传/base64（当前只验证 URL 透传不阻塞）
 
 ## 5. 结论
 
-多协议入口**不需要开发新协议适配**，后续 P1 工作应聚焦报表（#31）、防滥用（#32）、渠道换号（#33）；协议层只做 #38 的 e2e 补齐。
+多协议入口**不需要开发新协议适配**；e2e 覆盖流式/非流式/工具/图片/错误透传共 13 项（#38 已完成）。
+后续 P1 工作聚焦报表（#31，已完成）、防滥用（#32，已完成）、渠道换号（#33）。
