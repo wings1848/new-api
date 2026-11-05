@@ -24,6 +24,7 @@ const (
 	MsgPrivacyBlocked           = "privacy.blocked"
 	MsgConcurrencyLimitExceeded = "concurrency.limit_exceeded"
 	MsgAbuseGuardUnavailable    = "concurrency.unavailable"
+	MsgPrivacyFailClosed        = "privacy.fail_closed"
 	MsgRateLimitTotalReached    = "rate_limit.total_reached"
 
 	MsgDistributorInvalidRequest               = "distributor.invalid_request"

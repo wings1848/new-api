@@ -64,6 +64,9 @@ type Policy struct {
 	// whole detected values by regular expression.
 	Whitelist         []string `json:"whitelist,omitempty"`
 	WhitelistPatterns []string `json:"whitelist_patterns,omitempty"`
+	// Suppressions match whole detected values that are known false positives
+	// (for example test domains or example numbers) and must not be reported.
+	Suppressions []string `json:"suppressions,omitempty"`
 }
 
 // Finding is one detected value.
@@ -92,6 +95,7 @@ type Engine struct {
 	words             []compiledWord
 	whitelist         map[string]struct{}
 	whitelistPatterns []*regexp.Regexp
+	suppressions      []*regexp.Regexp
 	key               []byte
 }
 
@@ -103,7 +107,10 @@ type compiledRule struct {
 	// prefilter cheaply rejects a rule when the text cannot contain its kind;
 	// it keeps the common no-secret request off most regular expressions.
 	prefilter func(string) bool
-	order     int
+	// numericBoundary requires the match to stand alone, so a phone/id/card run
+	// inside a longer digit string is not reported (issue #36).
+	numericBoundary bool
+	order           int
 }
 
 type compiledWord struct {
@@ -137,6 +144,13 @@ func New(policy Policy) (*Engine, error) {
 			return nil, fmt.Errorf("invalid whitelist pattern %q: %w", pattern, err)
 		}
 		engine.whitelistPatterns = append(engine.whitelistPatterns, compiled)
+	}
+	for _, pattern := range policy.Suppressions {
+		compiled, err := regexp.Compile(pattern)
+		if err != nil {
+			return nil, fmt.Errorf("invalid suppression pattern %q: %w", pattern, err)
+		}
+		engine.suppressions = append(engine.suppressions, compiled)
 	}
 	customRules := 0
 	for index, rule := range policy.Rules {
@@ -194,10 +208,15 @@ func compileRule(rule Rule, order int) (compiledRule, error) {
 	switch rule.Type {
 	case "bank_card":
 		compiled.validate = validBankCard
+		compiled.numericBoundary = true
 	case "id_card_cn":
 		compiled.validate = validChineseID
+		compiled.numericBoundary = true
 	case "phone_cn":
 		compiled.validate = validChinesePhone
+		compiled.numericBoundary = true
+	case "iban":
+		compiled.validate = validIBAN
 	}
 	if rule.Builtin {
 		compiled.prefilter = builtinPrefilter(rule.ID)
@@ -285,6 +304,12 @@ func (e *Engine) detect(text string) []rawMatch {
 			if e.isWhitelisted(value) {
 				continue
 			}
+			if rule.numericBoundary && hasDigitAdjacent(text, start, end) {
+				continue
+			}
+			if e.isSuppressed(value) {
+				continue
+			}
 			matches = append(matches, rawMatch{start: start, end: end, value: value, rule: rule})
 		}
 	}
@@ -333,6 +358,26 @@ func (e *Engine) isWhitelisted(value string) bool {
 		if pattern.MatchString(value) {
 			return true
 		}
+	}
+	return false
+}
+
+func (e *Engine) isSuppressed(value string) bool {
+	for _, pattern := range e.suppressions {
+		if pattern.MatchString(value) {
+			return true
+		}
+	}
+	return false
+}
+
+// hasDigitAdjacent reports whether the match is glued to digits on either side.
+func hasDigitAdjacent(text string, start int, end int) bool {
+	if start > 0 && text[start-1] >= '0' && text[start-1] <= '9' {
+		return true
+	}
+	if end < len(text) && text[end] >= '0' && text[end] <= '9' {
+		return true
 	}
 	return false
 }

@@ -87,6 +87,7 @@ const (
 	ErrorCodeSensitiveDataBlocked        ErrorCode = "sensitive_data_blocked"
 	ErrorCodeConcurrencyLimitExceeded    ErrorCode = "concurrency_limit_exceeded"
 	ErrorCodeConcurrencyGuardUnavailable ErrorCode = "concurrency_guard_unavailable"
+	ErrorCodePrivacyFailClosed           ErrorCode = "privacy_fail_closed"
 	ErrorCodeInsufficientUserQuota       ErrorCode = "insufficient_user_quota"
 	ErrorCodePreConsumeTokenQuotaFailed  ErrorCode = "pre_consume_token_quota_failed"
 )
