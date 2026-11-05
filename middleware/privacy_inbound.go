@@ -59,7 +59,9 @@ func loadPrivacyInboundConfig() *privacyInboundConfig {
 	switch mode {
 	case privacyModeOff, privacyModeWarn, privacyModeRedact, privacyModeBlock:
 	case "":
-		mode = privacyModeOff
+		// Decision from issue #3: deploy with observe-only mode so operators can
+		// see what the rules find before switching to redact/block.
+		mode = privacyModeWarn
 	default:
 		common.SysLog(common.LogText("unknown PRIVACY_INBOUND_MODE %q, privacy filtering disabled", mode))
 		mode = privacyModeOff
@@ -164,7 +166,8 @@ func privacyInboundFailClosed() bool {
 }
 
 // PrivacyInbound masks sensitive values in relay JSON bodies according to
-// PRIVACY_INBOUND_MODE (off/warn/redact/block).
+// PRIVACY_INBOUND_MODE (off/warn/redact/block). The default is warn: it records
+// findings (dry-run, audited) without rewriting bodies; set redact to enforce.
 func PrivacyInbound() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// The relay entry also holds the abuse-guard concurrency slot and books
