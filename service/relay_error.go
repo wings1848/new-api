@@ -66,6 +66,11 @@ func ProcessChannelError(c *gin.Context, channelError types.ChannelError, err *t
 	}
 	upstreamURLs := common.UpstreamAddresses(c)
 	logger.LogError(c, common.LogText("channel error (channel #%d, status code: %d): %s", channelError.ChannelId, err.StatusCode, common.LocalLogPreview(err.MaskSensitiveErrorWithStatusCode(upstreamURLs...))))
+	// Upstream quota exhaustion rotates to another key of the same multi-key
+	// channel instead of disabling the whole channel (issue #33).
+	if RestExhaustedChannelKey(channelError, err, upstreamURLs) {
+		return
+	}
 	if ShouldDisableChannel(err) && channelError.AutoBan {
 		reason := err.MaskSensitiveErrorWithStatusCode(upstreamURLs...)
 		gopool.Go(func() {
