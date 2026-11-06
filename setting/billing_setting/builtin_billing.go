@@ -31,6 +31,11 @@ var builtinBillingExpr = map[string]string{
 	"deepseek-flash":               deepSeekFlashExpr,
 	"deepseek-v4-flash":            deepSeekFlashExpr,
 	"deepseek-v4-flash-vision-exp": deepSeekFlashExpr,
+	// This fork exposes the same model under its upstream version name, both
+	// bare and provider-prefixed. Administrator ratios configured for these
+	// names still win unless an explicit tiered_expr mode is set.
+	"deepseek-v4.1-flash":          deepSeekFlashExpr,
+	"deepseek/deepseek-v4.1-flash": deepSeekFlashExpr,
 	"deepseek-v4-pro":              deepSeekPeak + ` ? tier("peak", p * 1.32 + cr * 0.044 + c * 3.96) : tier("off_peak", p * 0.66 + cr * 0.022 + c * 1.98)`,
 	// The Search and Fetch API routing names: $0.75 per 1,000 successful
 	// requests each, the same pricing page. The calls carry no tokens.
