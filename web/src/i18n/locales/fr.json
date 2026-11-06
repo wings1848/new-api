@@ -7413,6 +7413,24 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Upstream Quota": "Quota amont",
+    "Upstream quota windows for this channel.": "Fenêtres de quota amont de ce canal.",
+    "Upstream warnings": "Avertissements de l'amont",
+    "Monthly Window": "Fenêtre mensuelle",
+    "Monthly spent": "Dépenses mensuelles",
+    "Billing period ends": "Fin de la période de facturation",
+    "credits": "crédits",
+    "Failed to fetch upstream quota": "Échec de la récupération du quota amont",
+    "This channel does not support upstream quota monitoring": "Ce canal ne prend pas en charge le suivi du quota amont",
+    "Upstream quota monitoring is not supported for multi-key channels": "Le suivi du quota amont n'est pas pris en charge pour les canaux à plusieurs clés",
+    "The channel key is missing": "La clé du canal est absente",
+    "The upstream rejected the channel key (HTTP 401)": "L'amont a rejeté la clé du canal (HTTP 401)",
+    "The upstream refused the quota request (HTTP 403)": "L'amont a refusé la requête de quota (HTTP 403)",
+    "This key has no active subscription": "Cette clé n'a pas d'abonnement actif",
+    "The upstream quota endpoint was not found (HTTP 404)": "Le point de terminaison du quota amont est introuvable (HTTP 404)",
+    "The upstream quota service is unavailable": "Le service de quota amont est indisponible",
+    "The upstream returned an unexpected quota response": "L'amont a renvoyé une réponse de quota inattendue",
+    "Only Command Code and OpenCode Go channels are supported.": "Seuls les canaux Command Code et OpenCode Go sont pris en charge."
   }
 }

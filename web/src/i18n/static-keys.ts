@@ -906,4 +906,17 @@ export const STATIC_I18N_KEYS = [
   'Channel priorities changed. Refresh and try again.',
   'Invalid channel priority move',
   'Channel priority is outside the sortable range',
+  // Upstream channel quota window labels and API error-code messages.
+  '5-Hour Window',
+  'Weekly Window',
+  'Monthly Window',
+  'This channel does not support upstream quota monitoring',
+  'Upstream quota monitoring is not supported for multi-key channels',
+  'The channel key is missing',
+  'The upstream rejected the channel key (HTTP 401)',
+  'The upstream refused the quota request (HTTP 403)',
+  'This key has no active subscription',
+  'The upstream quota endpoint was not found (HTTP 404)',
+  'The upstream quota service is unavailable',
+  'The upstream returned an unexpected quota response',
 ] as const

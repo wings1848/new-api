@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { CHANNEL_TYPE_VLLM, CHANNEL_TYPE_SGLANG } from '../constants'
 import { useChannels } from './channels-provider'
 import { BalanceQueryDialog } from './dialogs/balance-query-dialog'
+import { ChannelQuotaDialog } from './dialogs/channel-quota-dialog'
 import { ChannelTestDialog } from './dialogs/channel-test-dialog'
 import { CopyChannelDialog } from './dialogs/copy-channel-dialog'
 import { EditTagDialog } from './dialogs/edit-tag-dialog'
@@ -66,6 +67,12 @@ export function ChannelsDialogs() {
       {/* Balance Query Dialog */}
       <BalanceQueryDialog
         open={open === 'balance-query'}
+        onOpenChange={(v) => !v && setOpen(null)}
+      />
+
+      {/* Upstream Quota Dialog */}
+      <ChannelQuotaDialog
+        open={open === 'channel-quota'}
         onOpenChange={(v) => !v && setOpen(null)}
       />
 

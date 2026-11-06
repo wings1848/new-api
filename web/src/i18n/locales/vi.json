@@ -7413,6 +7413,24 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Upstream Quota": "Hạn mức thượng nguồn",
+    "Upstream quota windows for this channel.": "Các cửa sổ hạn mức thượng nguồn của kênh này.",
+    "Upstream warnings": "Cảnh báo từ thượng nguồn",
+    "Monthly Window": "Cửa sổ hàng tháng",
+    "Monthly spent": "Đã dùng trong tháng",
+    "Billing period ends": "Kỳ thanh toán kết thúc",
+    "credits": "tín dụng",
+    "Failed to fetch upstream quota": "Không lấy được hạn mức thượng nguồn",
+    "This channel does not support upstream quota monitoring": "Kênh này không hỗ trợ giám sát hạn mức thượng nguồn",
+    "Upstream quota monitoring is not supported for multi-key channels": "Kênh nhiều khóa không hỗ trợ giám sát hạn mức thượng nguồn",
+    "The channel key is missing": "Thiếu khóa của kênh",
+    "The upstream rejected the channel key (HTTP 401)": "Thượng nguồn từ chối khóa của kênh (HTTP 401)",
+    "The upstream refused the quota request (HTTP 403)": "Thượng nguồn từ chối yêu cầu hạn mức (HTTP 403)",
+    "This key has no active subscription": "Khóa này không có gói đăng ký đang hoạt động",
+    "The upstream quota endpoint was not found (HTTP 404)": "Không tìm thấy điểm cuối hạn mức của thượng nguồn (HTTP 404)",
+    "The upstream quota service is unavailable": "Dịch vụ hạn mức thượng nguồn không khả dụng",
+    "The upstream returned an unexpected quota response": "Thượng nguồn trả về phản hồi hạn mức không mong đợi",
+    "Only Command Code and OpenCode Go channels are supported.": "Chỉ hỗ trợ kênh Command Code và OpenCode Go."
   }
 }

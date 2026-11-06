@@ -230,6 +230,58 @@ export interface CopyChannelResponse {
 }
 
 // ============================================================================
+// Channel Quota Types
+// ============================================================================
+
+/** Provider-independent window kinds exposed by GET /api/channel/:id/quota. */
+export type ChannelQuotaWindowKind = '5h' | 'week' | 'month'
+
+export interface ChannelQuotaWindow {
+  kind: ChannelQuotaWindowKind
+  /** Upstream-provided English name, used only when the kind is unknown. */
+  name: string
+  /** 0-100 usage ratio. */
+  percent: number
+  /** Provider-native amount (credits for Command Code); absent for percent-only providers. */
+  used?: number
+  cap?: number
+  /** Absolute reset instant in epoch milliseconds. */
+  resetsAt?: number
+}
+
+export interface ChannelQuotaExtras {
+  monthlyCredits?: number
+  purchasedCredits?: number
+  freeCredits?: number
+  billingPeriodStart?: string
+  billingPeriodEnd?: string
+  monthlySpent?: number
+}
+
+export interface ChannelQuota {
+  provider: string
+  providerName: string
+  channelId: number
+  channelName: string
+  plan?: string
+  windows: ChannelQuotaWindow[]
+  extras?: ChannelQuotaExtras
+  warnings?: string[]
+  fetchedAt: number
+}
+
+/**
+ * GET /api/channel/:id/quota keeps HTTP 200 for provider-side failures, so the
+ * raw success/code/message payload is retained for the dialog to map.
+ */
+export interface ChannelQuotaResponse {
+  success: boolean
+  message?: string
+  code?: string
+  data?: ChannelQuota
+}
+
+// ============================================================================
 // Multi-Key Management Types
 // ============================================================================
 
