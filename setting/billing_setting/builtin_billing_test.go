@@ -188,6 +188,10 @@ func TestDeepSeekBuiltinBilling(t *testing.T) {
 		"deepseek-flash":               {"off_peak": 228, "peak": 456},
 		"deepseek-v4-flash":            {"off_peak": 228, "peak": 456},
 		"deepseek-v4-flash-vision-exp": {"off_peak": 228, "peak": 456},
+		// The fork exposes the same model as deepseek-v4.1-flash (bare and
+		// provider-prefixed); both must settle at the official Flash price.
+		"deepseek-v4.1-flash":          {"off_peak": 228, "peak": 456},
+		"deepseek/deepseek-v4.1-flash": {"off_peak": 228, "peak": 456},
 		// pro: 1000*0.66 + 2000*0.022 + 500*1.98 = $0.001694 off-peak.
 		"deepseek-v4-pro": {"off_peak": 847, "peak": 1694},
 	} {
