@@ -19,7 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
 import { Pencil } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -32,6 +32,7 @@ import {
   sideDrawerHeaderClassName,
 } from '@/components/drawer-layout'
 import { PermissionMatrix } from '@/components/permission-matrix'
+import { QuotaWindowUsage } from '@/components/quota-window-usage'
 import { Button } from '@/components/ui/button'
 import { Combobox } from '@/components/ui/combobox'
 import {
@@ -132,6 +133,10 @@ export function UsersMutateDrawer({
   const loadedPermissions = useRef<AdminPermissionMatrix | undefined>(undefined)
   const loadedUnlimitedQuota = useRef(false)
   const loadedQuotaWindowOverview = useRef<QuotaWindowOverview | null>(null)
+  // Loaded window usage (used/limit/reset); display-only, limits are edited
+  // through `quotaWindowState`.
+  const [quotaWindowOverview, setQuotaWindowOverview] =
+    useState<QuotaWindowOverview | null>(null)
   const [quotaWindowState, setQuotaWindowState] =
     useState<QuotaWindowLimitState | null>(null)
 
@@ -176,6 +181,7 @@ export function UsersMutateDrawer({
           }
           if (windowResult.success && windowResult.data) {
             loadedQuotaWindowOverview.current = windowResult.data
+            setQuotaWindowOverview(windowResult.data)
             setQuotaWindowState(
               quotaWindowFormStateFromOverview(windowResult.data)
             )
@@ -194,6 +200,7 @@ export function UsersMutateDrawer({
       // For create, reset to defaults
       loadedUnlimitedQuota.current = false
       loadedQuotaWindowOverview.current = null
+      setQuotaWindowOverview(null)
       setQuotaWindowState(null)
       form.reset(USER_FORM_DEFAULT_VALUES)
     }
@@ -207,6 +214,20 @@ export function UsersMutateDrawer({
   const selectedRole = form.watch('role')
   const canEditAdminPermissions = currentUser?.role === ROLE.SUPER_ADMIN
   const targetIsAdmin = (selectedRole ?? currentRow?.role ?? 0) >= ROLE.ADMIN
+
+  const quotaWindowByKind = useMemo(
+    () =>
+      new Map(
+        (quotaWindowOverview?.windows ?? []).map((window) => [
+          window.kind,
+          window,
+        ])
+      ),
+    [quotaWindowOverview]
+  )
+  const fiveHourWindow = quotaWindowByKind.get('5h')
+  const sevenDayWindow = quotaWindowByKind.get('7d')
+  const quotaWindowServerTime = quotaWindowOverview?.server_time ?? 0
 
   const onSubmit = async (data: UserFormValues) => {
     if (!isUpdate || data.password) {
@@ -631,6 +652,15 @@ export function UsersMutateDrawer({
                           })
                         }
                       />
+                      {fiveHourWindow && (
+                        <QuotaWindowUsage
+                          limit={fiveHourWindow.limit}
+                          resetAt={fiveHourWindow.reset_at}
+                          serverTime={quotaWindowServerTime}
+                          used={fiveHourWindow.used}
+                          variant='inline'
+                        />
+                      )}
                       <QuotaWindowLimitField
                         amount={quotaWindowState.sevenDayAmount}
                         currencyLabel={currencyLabel}
@@ -649,6 +679,15 @@ export function UsersMutateDrawer({
                           })
                         }
                       />
+                      {sevenDayWindow && (
+                        <QuotaWindowUsage
+                          limit={sevenDayWindow.limit}
+                          resetAt={sevenDayWindow.reset_at}
+                          serverTime={quotaWindowServerTime}
+                          used={sevenDayWindow.used}
+                          variant='inline'
+                        />
+                      )}
                     </div>
                   )}
                 </SideDrawerSection>

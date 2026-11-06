@@ -5366,6 +5366,7 @@
     "Reset Cycle": "リセット周期",
     "Reset email sent, please check your inbox": "リセットメールを送信しました、受信箱を確認してください",
     "Reset failed": "リセット失敗",
+    "Reset in {{duration}}": "{{duration}} 後にリセット",
     "Reset model ratios": "モデル倍率をリセットしました",
     "Reset Passkey": "Passkeyリセット",
     "Reset Passkey for {{username}}? The user will need to register a new Passkey before using passwordless login.": "{{username}} の Passkey をリセットしますか？パスワードレスログインを使用するには、新しい Passkey の登録が必要です。",

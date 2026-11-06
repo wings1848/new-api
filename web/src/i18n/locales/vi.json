@@ -5366,6 +5366,7 @@
     "Reset Cycle": "Chu kỳ đặt lại",
     "Reset email sent, please check your inbox": "Email đặt lại đã được gửi, vui lòng kiểm tra hộp thư đến",
     "Reset failed": "Đặt lại thất bại",
+    "Reset in {{duration}}": "Đặt lại sau {{duration}}",
     "Reset model ratios": "Đã đặt lại tỷ lệ mô hình",
     "Reset Passkey": "Đặt lại Khóa truy cập",
     "Reset Passkey for {{username}}? The user will need to register a new Passkey before using passwordless login.": "Đặt lại Passkey cho {{username}}? Người dùng cần đăng ký Passkey mới trước khi dùng đăng nhập không mật khẩu.",

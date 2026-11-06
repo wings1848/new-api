@@ -5366,6 +5366,7 @@
     "Reset Cycle": "Cycle de réinitialisation",
     "Reset email sent, please check your inbox": "Email de réinitialisation envoyé, veuillez vérifier votre boîte de réception",
     "Reset failed": "Échec de la réinitialisation",
+    "Reset in {{duration}}": "Réinitialisation dans {{duration}}",
     "Reset model ratios": "Ratios de modèle réinitialisés",
     "Reset Passkey": "Réinitialiser le Passkey",
     "Reset Passkey for {{username}}? The user will need to register a new Passkey before using passwordless login.": "Réinitialiser la Passkey de {{username}} ? L’utilisateur devra enregistrer une nouvelle Passkey avant d’utiliser la connexion sans mot de passe.",

@@ -5366,6 +5366,7 @@
     "Reset Cycle": "Цикл сброса",
     "Reset email sent, please check your inbox": "Письмо для сброса отправлено, проверьте входящие",
     "Reset failed": "Ошибка сброса",
+    "Reset in {{duration}}": "Сброс через {{duration}}",
     "Reset model ratios": "Коэффициенты моделей сброшены",
     "Reset Passkey": "Сброс Passkey",
     "Reset Passkey for {{username}}? The user will need to register a new Passkey before using passwordless login.": "Сбросить Passkey для {{username}}? Пользователю нужно будет зарегистрировать новый Passkey перед входом без пароля.",

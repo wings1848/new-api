@@ -5366,6 +5366,7 @@
     "Reset Cycle": "重置周期",
     "Reset email sent, please check your inbox": "重置邮件已发送，请检查您的收件箱",
     "Reset failed": "重置失败",
+    "Reset in {{duration}}": "{{duration}} 后重置",
     "Reset model ratios": "重置模型倍率",
     "Reset Passkey": "重置 Passkey",
     "Reset Passkey for {{username}}? The user will need to register a new Passkey before using passwordless login.": "要重置 {{username}} 的 Passkey 吗？该用户需要重新注册 Passkey 后才能使用无密码登录。",

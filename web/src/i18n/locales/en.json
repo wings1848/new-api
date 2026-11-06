@@ -5366,6 +5366,7 @@
     "Reset Cycle": "Reset Cycle",
     "Reset email sent, please check your inbox": "Reset email sent, please check your inbox",
     "Reset failed": "Reset failed",
+    "Reset in {{duration}}": "Reset in {{duration}}",
     "Reset model ratios": "Reset model ratios",
     "Reset Passkey": "Reset Passkey",
     "Reset Passkey for {{username}}? The user will need to register a new Passkey before using passwordless login.": "Reset Passkey for {{username}}? The user will need to register a new Passkey before using passwordless login.",
