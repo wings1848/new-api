@@ -34,6 +34,7 @@ import {
   useUsageLogsContext,
 } from './components/usage-logs-provider'
 import { UsageLogsTable } from './components/usage-logs-table'
+import { WindowReportButton } from './components/window-report-button'
 import {
   isUsageLogsSectionId,
   USAGE_LOGS_DEFAULT_SECTION,
@@ -129,6 +130,7 @@ function UsageLogsContent() {
           {t(pageMeta.titleKey)}
         </SectionPageLayout.Title>
         <SectionPageLayout.Actions>
+          {activeCategory === 'common' && <WindowReportButton />}
           {canManageScope && (
             <Tabs value={viewScope} onValueChange={handleViewScopeChange}>
               <TabsList>
