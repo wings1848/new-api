@@ -7413,6 +7413,24 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Upstream Quota": "Upstream Quota",
+    "Upstream quota windows for this channel.": "Upstream quota windows for this channel.",
+    "Upstream warnings": "Upstream warnings",
+    "Monthly Window": "Monthly Window",
+    "Monthly spent": "Monthly spent",
+    "Billing period ends": "Billing period ends",
+    "credits": "credits",
+    "Failed to fetch upstream quota": "Failed to fetch upstream quota",
+    "This channel does not support upstream quota monitoring": "This channel does not support upstream quota monitoring",
+    "Upstream quota monitoring is not supported for multi-key channels": "Upstream quota monitoring is not supported for multi-key channels",
+    "The channel key is missing": "The channel key is missing",
+    "The upstream rejected the channel key (HTTP 401)": "The upstream rejected the channel key (HTTP 401)",
+    "The upstream refused the quota request (HTTP 403)": "The upstream refused the quota request (HTTP 403)",
+    "This key has no active subscription": "This key has no active subscription",
+    "The upstream quota endpoint was not found (HTTP 404)": "The upstream quota endpoint was not found (HTTP 404)",
+    "The upstream quota service is unavailable": "The upstream quota service is unavailable",
+    "The upstream returned an unexpected quota response": "The upstream returned an unexpected quota response",
+    "Only Command Code and OpenCode Go channels are supported.": "Only Command Code and OpenCode Go channels are supported."
   }
 }

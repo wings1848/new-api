@@ -29,6 +29,7 @@ import type {
   Channel,
   ChannelBalanceResponse,
   ChannelOpsResponse,
+  ChannelQuotaResponse,
   ChannelTestResponse,
   CopyChannelParams,
   CopyChannelResponse,
@@ -402,6 +403,27 @@ export async function getCodexUsage(
   const res = await api.get(
     `/api/channel/${channelId}/codex/usage`,
     channelActionConfig({ disableDuplicate: true })
+  )
+  return res.data
+}
+
+// ============================================================================
+// Channel Quota Monitoring
+// ============================================================================
+
+/**
+ * Fetch the upstream quota windows of a single-key channel.
+ *
+ * Provider failures come back as HTTP 200 with `success: false` and a stable
+ * `code`, so this returns the raw payload and leaves presentation to the dialog.
+ */
+export async function getChannelQuota(
+  channelId: number,
+  signal?: AbortSignal
+): Promise<ChannelQuotaResponse> {
+  const res = await api.get(
+    `/api/channel/${channelId}/quota`,
+    channelActionConfig({ disableDuplicate: true, signal })
   )
   return res.data
 }

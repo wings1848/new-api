@@ -25,6 +25,7 @@ import {
   PlugZap,
   Gauge,
   DollarSign,
+  BarChart3,
   Download,
   Copy,
   Power,
@@ -66,6 +67,7 @@ import {
   handleTestChannel,
   handleToggleChannelStatus,
   isChannelEnabled,
+  isChannelQuotaSupported,
   isMultiKeyChannel,
 } from '../lib'
 import type { Channel } from '../types'
@@ -120,6 +122,11 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const handleQueryBalance = () => {
     setCurrentRow(channel)
     setOpen('balance-query')
+  }
+
+  const handleChannelQuota = () => {
+    setCurrentRow(channel)
+    setOpen('channel-quota')
   }
 
   const handleFetchModels = () => {
@@ -287,6 +294,16 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               <DollarSign size={16} />
             </DropdownMenuShortcut>
           </DropdownMenuItem>
+
+          {/* Upstream Quota (only for providers the backend can query) */}
+          {isChannelQuotaSupported(channel.base_url) && (
+            <DropdownMenuItem onClick={handleChannelQuota}>
+              {t('Upstream Quota')}
+              <DropdownMenuShortcut>
+                <BarChart3 size={16} />
+              </DropdownMenuShortcut>
+            </DropdownMenuItem>
+          )}
 
           {/* Fetch Models */}
           <DropdownMenuItem onClick={handleFetchModels}>

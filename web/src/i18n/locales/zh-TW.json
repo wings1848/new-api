@@ -7413,6 +7413,24 @@
     "Zhipu": "智譜",
     "Zhipu GLM": "智譜GLM",
     "Zhipu V4": "智譜 V4",
-    "Zoom": "縮放"
+    "Zoom": "縮放",
+    "Upstream Quota": "上游額度",
+    "Upstream quota windows for this channel.": "此通路的上游額度視窗。",
+    "Upstream warnings": "上游警告",
+    "Monthly Window": "月度視窗",
+    "Monthly spent": "月度已用",
+    "Billing period ends": "帳期結束於",
+    "credits": "額度點",
+    "Failed to fetch upstream quota": "取得上游額度失敗",
+    "This channel does not support upstream quota monitoring": "此通路不支援上游額度監控",
+    "Upstream quota monitoring is not supported for multi-key channels": "多金鑰通路暫不支援上游額度監控",
+    "The channel key is missing": "通路金鑰缺少",
+    "The upstream rejected the channel key (HTTP 401)": "上游拒絕了通路金鑰（HTTP 401）",
+    "The upstream refused the quota request (HTTP 403)": "上游拒絕了額度請求（HTTP 403）",
+    "This key has no active subscription": "此金鑰沒有有效訂閱",
+    "The upstream quota endpoint was not found (HTTP 404)": "上游額度端點不存在（HTTP 404）",
+    "The upstream quota service is unavailable": "上游額度服務無法使用",
+    "The upstream returned an unexpected quota response": "上游傳回了無法辨識的額度回應",
+    "Only Command Code and OpenCode Go channels are supported.": "僅支援 Command Code 與 OpenCode Go 通路。"
   }
 }

@@ -7413,6 +7413,24 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Upstream Quota": "Квота поставщика",
+    "Upstream quota windows for this channel.": "Окна квоты поставщика для этого канала.",
+    "Upstream warnings": "Предупреждения поставщика",
+    "Monthly Window": "Месячное окно",
+    "Monthly spent": "Расход за месяц",
+    "Billing period ends": "Окончание расчётного периода",
+    "credits": "кредитов",
+    "Failed to fetch upstream quota": "Не удалось получить квоту поставщика",
+    "This channel does not support upstream quota monitoring": "Этот канал не поддерживает мониторинг квоты поставщика",
+    "Upstream quota monitoring is not supported for multi-key channels": "Мониторинг квоты поставщика не поддерживается для каналов с несколькими ключами",
+    "The channel key is missing": "Ключ канала отсутствует",
+    "The upstream rejected the channel key (HTTP 401)": "Поставщик отклонил ключ канала (HTTP 401)",
+    "The upstream refused the quota request (HTTP 403)": "Поставщик отклонил запрос квоты (HTTP 403)",
+    "This key has no active subscription": "У этого ключа нет активной подписки",
+    "The upstream quota endpoint was not found (HTTP 404)": "Конечная точка квоты поставщика не найдена (HTTP 404)",
+    "The upstream quota service is unavailable": "Служба квоты поставщика недоступна",
+    "The upstream returned an unexpected quota response": "Поставщик вернул неожиданный ответ о квоте",
+    "Only Command Code and OpenCode Go channels are supported.": "Поддерживаются только каналы Command Code и OpenCode Go."
   }
 }

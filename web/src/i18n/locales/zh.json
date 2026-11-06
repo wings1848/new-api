@@ -7413,6 +7413,24 @@
     "Zhipu": "智谱",
     "Zhipu GLM": "智谱GLM",
     "Zhipu V4": "智谱 V4",
-    "Zoom": "缩放"
+    "Zoom": "缩放",
+    "Upstream Quota": "上游额度",
+    "Upstream quota windows for this channel.": "该渠道的上游额度窗口。",
+    "Upstream warnings": "上游警告",
+    "Monthly Window": "月度窗口",
+    "Monthly spent": "月度已用",
+    "Billing period ends": "账期结束于",
+    "credits": "额度点",
+    "Failed to fetch upstream quota": "获取上游额度失败",
+    "This channel does not support upstream quota monitoring": "该渠道不支持上游额度监控",
+    "Upstream quota monitoring is not supported for multi-key channels": "多 Key 渠道暂不支持上游额度监控",
+    "The channel key is missing": "渠道密钥缺失",
+    "The upstream rejected the channel key (HTTP 401)": "上游拒绝了渠道密钥（HTTP 401）",
+    "The upstream refused the quota request (HTTP 403)": "上游拒绝了额度请求（HTTP 403）",
+    "This key has no active subscription": "该密钥没有有效订阅",
+    "The upstream quota endpoint was not found (HTTP 404)": "上游额度接口不存在（HTTP 404）",
+    "The upstream quota service is unavailable": "上游额度服务不可用",
+    "The upstream returned an unexpected quota response": "上游返回了无法识别的额度响应",
+    "Only Command Code and OpenCode Go channels are supported.": "仅支持 Command Code 和 OpenCode Go 渠道。"
   }
 }
