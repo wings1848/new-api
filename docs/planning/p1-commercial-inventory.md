@@ -1,7 +1,7 @@
 # P1 商业化能力盘点与子任务拆解（issue #14）
 
 > 状态：盘点完成，子任务已拆。代码路径基于 `main@e06d5a490`。
-> 参考报告：`.refs/magpie-report.md`（481 行）、`.refs/astrlink-report.md`（608 行），两份报告均在本地，未入库。
+> 参考报告：`docs/research/2026-11-05-magpie-quota-window.md`（491 行）、`docs/research/2026-11-05-astrlink-privacy-port.md`（618 行），已入库。
 
 ## 1. 画布期望 → 现状 → 缺口
 
@@ -11,7 +11,7 @@
 | 2 | 用量报表 / 费用估算 | usage-logs（`web/src/features/usage-logs/`）、dashboard、按天聚合（`model/usedata.go`） | 缺「5h/7d 窗口」「套餐/分组」维度与导出 | #31 |
 | 3 | 防滥用：注册收口、并发限制、异常检测 | 注册开关/邮箱验证/Turnstile；模型 RPM/TPM 限流（`middleware/model-rate-limit.go`）；渠道自动禁用 | 缺**在途并发上限**与异常检测（失败率、多 token 轮换） | #32 |
 | 4 | 渠道多账号 + 耗尽自动切换 | multi-key 渠道（`model/channel.go`）、重试（`service/relay_error.go`）、自动禁用 | 缺「上游账号额度耗尽」识别、换号休息阶梯、响应提交后不切换 | #33 |
-| 5 | 参考项目可移植清单 | magpie/AstrLink 报告已在 `.refs/`；#5/#6/#9~#13 已吸收主要设计 | 缺逐项去留结论与排期 | #34 |
+| 5 | 参考项目可移植清单 | magpie/AstrLink 报告已在 `docs/research/`；#5/#6/#9~#13 已吸收主要设计 | 缺逐项去留结论与排期 | #34 |
 
 ## 2. 参考项目可移植清单（文件级 + 工作量）
 

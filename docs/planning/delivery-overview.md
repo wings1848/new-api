@@ -67,7 +67,7 @@
 
 | 证据 | 位置 |
 |---|---|
-| devflow 运行目录（每个 PR 的验收/红证/验证报告/复盘） | `/home/wings/Code_Project/.devflow-runs/<run-id>/` |
+| devflow 运行目录（每个 PR 的验收/红证/验证报告/复盘） | `runs/<run-id>/`（仓库内，本地未入库） |
 | 多协议 e2e（13/13） | `e2e/multi-protocol/run.sh` + `mock_upstream.py` |
 | 隐私引擎基准 | `pkg/privacy`；1KB 0.38ms / 10KB 3.7ms（N6000） |
 | 三库矩阵 | quota window、管理 API、报表、隐私审计的 SQLite/MySQL 8.0/PostgreSQL 18 测试记录 |
